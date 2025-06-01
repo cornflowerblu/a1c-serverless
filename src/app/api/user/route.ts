@@ -9,6 +9,8 @@ export async function GET() {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
+    const token = await getToken({ template: 'supabase' });
+
   try {
     // Create a Supabase client with the Clerk session token
     const supabaseClient = createClient(
@@ -22,7 +24,6 @@ export async function GET() {
         }
       }
     )
-    console.log('Supabase client created:', supabaseClient)
     
 
     // Fetch users from Supabase
