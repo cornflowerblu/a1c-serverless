@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# A1C Serverless
+
+A modern web application for tracking blood glucose readings and estimating A1C levels, built with Next.js, Clerk, and Supabase.
+
+## Tech Stack
+
+- **Frontend**: Next.js with App Router, React 19, TypeScript, TailwindCSS
+- **Authentication**: Clerk
+- **Database**: Supabase PostgreSQL
+- **Background Processing**: Supabase Job Queue
+- **Testing**: Vitest (unit/integration), Cypress (E2E)
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+ and npm
+- Supabase account and project
+- Clerk account and project
+
+### Environment Setup
+
+Create a `.env` file in the root directory with:
+
+```
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Install dependencies
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Run development server
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-To learn more about Next.js, take a look at the following resources:
+## Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Available Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm test` - Run Vitest tests
+- `npm run test:watch` - Run Vitest in watch mode
+- `npm run test:coverage` - Generate test coverage report
+- `npm run test:e2e` - Run Cypress tests
+- `npm run test:e2e:open` - Open Cypress test runner
 
-## Deploy on Vercel
+### Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+a1c-serverless/
+├── src/
+│   ├── app/            # Next.js App Router
+│   │   ├── api/        # API routes
+│   │   ├── components/ # React components
+│   │   └── lib/        # Utility functions
+│   ├── tests/          # Vitest tests
+│   └── middleware.ts   # Next.js middleware
+├── cypress/            # Cypress E2E tests
+├── public/             # Static assets
+└── ...config files
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Features
+
+- User authentication and profile management
+- Glucose reading tracking with context (meal time, etc.)
+- A1C calculation based on glucose readings
+- Run and month organization for readings
+- Background processing for calculations
+- Responsive design for mobile and desktop
+
+## Testing
+
+- **Unit/Integration Tests**: Using Vitest and React Testing Library
+- **E2E Tests**: Using Cypress
+
+Run tests with:
+
+```bash
+# Unit tests
+npm test
+
+# E2E tests
+npm run test:e2e
+```
+
+## Deployment
+
+This application is configured for deployment on Vercel:
+
+```bash
+# Build and deploy
+vercel
+```
+
+## License
+
+[MIT](LICENSE)

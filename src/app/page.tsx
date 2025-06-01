@@ -1,11 +1,13 @@
-'use client'
+'use client';
 
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import UserList from "./components/users";
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import UserList from './components/users';
 
 export default function Home() {
-  const [userData, setUserData] = useState<{ fullName: string, role: string, sub: string } | null>(null);
+  const [userData, setUserData] = useState<{ fullName: string; role: string; sub: string } | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
 
@@ -14,12 +16,12 @@ export default function Home() {
       try {
         setLoading(true);
         const response = await fetch('/api/auth');
-        
+
         if (response.status === 401) {
           setIsLoggedIn(false);
           return;
         }
-        
+
         const data = await response.json();
         setUserData(data);
         setIsLoggedIn(true);
@@ -46,26 +48,22 @@ export default function Home() {
         />
         <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
           <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
+            Get started by editing{' '}
             <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
               src/app/page.tsx
             </code>
             .
           </li>
+          <li className="tracking-[-.01em]">Save and see your changes instantly.</li>
           <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-          <li className="tracking-[-.01em]">
-            {loading ? (
-              "Loading user information..."
-            ) : isLoggedIn ? (
-              `Hello ${userData?.fullName} you are ${userData?.role} and your clerk user_id is ${userData?.sub}!`
-            ) : (
-              "Please log in to see your information."
-            )}
+            {loading
+              ? 'Loading user information...'
+              : isLoggedIn
+                ? `Hello ${userData?.fullName} you are ${userData?.role} and your clerk user_id is ${userData?.sub}!`
+                : 'Please log in to see your information.'}
           </li>
         </ol>
-        <UserList/>
+        <UserList />
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
@@ -100,13 +98,7 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
+          <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
           Learn
         </a>
         <a
@@ -115,13 +107,7 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
+          <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
           Examples
         </a>
         <a
@@ -130,13 +116,7 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
+          <Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
           Go to nextjs.org →
         </a>
       </footer>
