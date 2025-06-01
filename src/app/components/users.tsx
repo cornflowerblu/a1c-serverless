@@ -1,60 +1,67 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSession, useUser } from '@clerk/nextjs'
-import { createClient } from '@supabase/supabase-js'
+import { useUser } from '@clerk/nextjs'
+
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  // Add other fields as needed
+}
 
 export default function UserList() {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
   // The `useUser()` hook is used to ensure that Clerk has loaded data about the signed in user
-  const { user } = useUser()
-  // The `useSession()` hook is used to get the Clerk session object
-  // The session object is used to get the Clerk session token
-  const { session } = useSession()
+  const { user, isLoaded } = useUser()
 
-  // Create a custom Supabase client that injects the Clerk session token into the request headers
-  function createClerkSupabaseClient() {
-    return createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        async accessToken() {
-          return session?.getToken() ?? null
-        },
-      },
-    )
-  }
-
-  // Create a `client` object for accessing Supabase data using the Clerk token
-  const client = createClerkSupabaseClient()
-
-  // This `useEffect` will wait for the User object to be loaded before requesting
-  // the tasks for the signed in user
   useEffect(() => {
-    if (!user) return
+    if (!isLoaded) return
 
-    async function loadUsers() {
-      setLoading(true)
-      const { data, error } = await client.from('users').select()
-      if (!error) setUsers(data)
-      setLoading(false)
+    async function fetchUsers() {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await fetch('/api/user')
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        setUsers(data.users)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load users')
+        console.error('Error fetching users:', err)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    loadUsers()
-  }, [user])
+    fetchUsers()
+  }, [isLoaded])
 
   return (
-    <div>
-      <h1>Useres</h1>
+    <div className="w-full">
+      <h2 className="text-lg font-semibold mb-4 text-center sm:text-left font-[family-name:var(--font-geist-sans)]">Users</h2>
 
-      {loading && <p>Loading...</p>}
+      {loading && <p className="text-sm/6 tracking-[-.01em] font-[family-name:var(--font-geist-mono)]">Loading...</p>}
+      
+      {error && <p className="text-red-500 text-sm/6 tracking-[-.01em] font-[family-name:var(--font-geist-mono)]">Error: {error}</p>}
 
-      {!loading && users.length > 0 && <p>{users}</p>}
+      {!loading && !error && users.length > 0 && (
+        <ul className="space-y-3 text-sm/6 font-[family-name:var(--font-geist-mono)]">
+          {users.map((user) => (
+            <li key={user.id} className="p-3 bg-black/[.05] dark:bg-white/[.06] rounded-md">
+              <p className="tracking-[-.01em]"><strong>Name:</strong> {user.name}</p>
+              <p className="tracking-[-.01em]"><strong>Email:</strong> {user.email}</p>
+            </li>
+          ))}
+        </ul>
+      )}
 
-      {!loading && users.length === 0 && <p>No users found</p>}
-
-    
+      {!loading && !error && users.length === 0 && <p className="text-sm/6 tracking-[-.01em] font-[family-name:var(--font-geist-mono)]">No users found</p>}
     </div>
   )
 }
