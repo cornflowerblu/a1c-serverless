@@ -1,15 +1,15 @@
-import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 
 export async function GET() {
-  const { userId, getToken } = await auth()
-  
+  const { userId, getToken } = await auth();
+
   if (!userId) {
-    return new NextResponse('Unauthorized', { status: 401 })
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
-    const token = await getToken({ template: 'supabase' });
+  const token = await getToken({ template: "supabase" });
 
   try {
     // Create a Supabase client with the Clerk session token
@@ -19,26 +19,47 @@ export async function GET() {
       {
         global: {
           headers: {
-            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`
-          }
-        }
+            Authorization: `Bearer ${await getToken({ template: "supabase" })}`,
+          },
+        },
       }
-    )
-    
+    );
 
     // Fetch users from Supabase
-    const { data: users, error } = await supabaseClient.from('users').select()
+    const { data, error } = await supabaseClient.from("users").select(`
+    id,
+    email,
+    name,
+    role,
+    runs (
+      id,
+      startDate,
+      endDate,
+      estimatedA1C,
+      notes,
+      readings (
+        id,
+        glucose_value,
+        timestamp,
+        meal_context
+      )
+    )
+  `);
 
-    console.log('Fetched users:', users)
-    
     if (error) {
-      console.error('Supabase error:', error)
-      return new NextResponse('Failed to fetch users', { status: 500 })
+      console.error("Error fetching users:", error);
+    } else {
+      console.log("Fetched users with nested data:", data);
     }
 
-    return NextResponse.json({ users })
+    if (error) {
+      console.error("Supabase error:", error);
+      return new NextResponse("Failed to fetch users", { status: 500 });
+    }
+
+    return NextResponse.json({ data });
   } catch (error) {
-    console.error('Error fetching users:', error)
-    return new NextResponse('Internal Server Error', { status: 500 })
+    console.error("Error fetching users:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
