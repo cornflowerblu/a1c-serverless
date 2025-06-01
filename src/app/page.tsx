@@ -1,6 +1,38 @@
+'use client'
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import UserList from "./components/users";
 
 export default function Home() {
+  const [userData, setUserData] = useState<{ fullName: string, role: string, sub: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/auth');
+        
+        if (response.status === 401) {
+          setIsLoggedIn(false);
+          return;
+        }
+        
+        const data = await response.json();
+        setUserData(data);
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setIsLoggedIn(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -23,7 +55,17 @@ export default function Home() {
           <li className="tracking-[-.01em]">
             Save and see your changes instantly.
           </li>
+          <li className="tracking-[-.01em]">
+            {loading ? (
+              "Loading user information..."
+            ) : isLoggedIn ? (
+              `Hello ${userData?.fullName} you are ${userData?.role} and your clerk user_id is ${userData?.sub}!`
+            ) : (
+              "Please log in to see your information."
+            )}
+          </li>
         </ol>
+        <UserList/>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
