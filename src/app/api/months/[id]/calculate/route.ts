@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/app/lib/client';
 import { calculateMonthStatistics } from '../../../../../utils/month-management';
 import type { Month, Run } from '../../../../../types/glucose';
 
@@ -14,24 +14,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId, getToken } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const monthId = params.id;
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // Get month
     const { data: monthData, error: monthError } = await supabase
@@ -55,9 +45,9 @@ export async function PUT(
       endDate: new Date(monthData.end_date),
       calculatedA1C: monthData.calculated_a1c,
       averageGlucose: monthData.average_glucose,
-      runIds: monthData.run_ids || [],
-      createdAt: new Date(monthData.created_at),
-      updatedAt: new Date(monthData.updated_at)
+      createdAt: new Date(monthData.created_at as string),
+      updatedAt: new Date(monthData.updated_at as string),
+      runIds: []
     };
     
     // Get runs for this month
@@ -82,8 +72,8 @@ export async function PUT(
       calculatedA1C: run.calculated_a1c,
       averageGlucose: run.average_glucose,
       monthId: run.month_id,
-      createdAt: new Date(run.created_at),
-      updatedAt: new Date(run.updated_at)
+      createdAt: new Date(run.created_at as unknown as Date),
+      updatedAt: new Date(run.updated_at as unknown as Date)
     }));
     
     // Get calculation options from request body
@@ -99,7 +89,7 @@ export async function PUT(
       .update({
         calculated_a1c: updatedMonth.calculatedA1C,
         average_glucose: updatedMonth.averageGlucose,
-        updated_at: updatedMonth.updatedAt
+        updated_at: updatedMonth.updatedAt as any
       })
       .eq('id', monthId)
       .select()
@@ -119,7 +109,7 @@ export async function PUT(
       endDate: updatedData.end_date,
       calculatedA1C: updatedData.calculated_a1c,
       averageGlucose: updatedData.average_glucose,
-      runIds: updatedData.run_ids || [],
+      runIds: [],
       createdAt: updatedData.created_at,
       updatedAt: updatedData.updated_at
     };

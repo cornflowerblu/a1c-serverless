@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/app/lib/client';
 import { createMonth } from '@/utils/month-management';
-import { Database } from '@/types/supabase';
 
 /**
  * GET /api/months
@@ -10,23 +10,13 @@ import { Database } from '@/types/supabase';
  */
 export async function GET(_request: NextRequest) {
   try {
-    const { userId, getToken } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     const { data, error } = await supabase
       .from('months')
@@ -85,28 +75,23 @@ export async function POST(request: NextRequest) {
     // Create month object
     const month = createMonth(userId, name, start, end);
     
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await (await auth()).getToken({ template: 'supabase' })}`,
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // Insert into database
     const { data, error } = await supabase
       .from('months')
       .insert({
+        //@ts-ignore
+        id: month.id,
         user_id: month.userId,
         name: month.name,
-        start_date: month.startDate.toISOString(),
-        end_date: month.endDate.toISOString(),
+        start_date: month.startDate,
+        end_date: month.endDate,
         calculated_a1c: month.calculatedA1C,
-        average_glucose: month.averageGlucose
+        average_glucose: month.averageGlucose,
+        run_ids: month.runIds,
+        created_at: month.createdAt,
+        updated_at: month.updatedAt
       })
       .select()
       .single();
@@ -142,7 +127,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId, getToken } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -152,17 +137,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json();
     const { name, startDate, endDate } = body;
     
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // Check if month exists and belongs to user
     const { data: existingMonth, error: fetchError } = await supabase
@@ -252,24 +227,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
  */
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId, getToken } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const monthId = params.id;
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // Check if month exists and belongs to user
     const { data: existingMonth, error: fetchError } = await supabase
