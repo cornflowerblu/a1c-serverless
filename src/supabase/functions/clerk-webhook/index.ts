@@ -57,6 +57,29 @@ Deno.serve(async (req) => {
         email.id === payload.data.primary_email_address_id
       )?.email_address
       
+      // Check if user already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select()
+        .eq('clerk_id', clerkId)
+        .maybeSingle()
+      
+      if (checkError) {
+        console.error('Error checking for existing user:', checkError)
+        return new Response(JSON.stringify({ error: 'Failed to check for existing user' }), { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      
+      if (existingUser) {
+        console.log('User already exists:', existingUser)
+        return new Response(JSON.stringify({ message: 'User already exists', user: existingUser }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      
       // Create user in Supabase
       const { data, error } = await supabase
         .from('users')
