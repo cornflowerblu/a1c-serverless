@@ -21,7 +21,8 @@
     }
   },
   "ignorePatterns":[
-    "src/supabase/functions/*"
+    "src/supabase/functions/*",
+    "src/scripts/seed.ts"
   ],
   "overrides": [
     {
