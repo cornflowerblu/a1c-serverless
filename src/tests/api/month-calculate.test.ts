@@ -118,8 +118,8 @@ vi.mock('../../utils/month-management', () => ({
 }));
 
 // Import the route handler after mocking
-const { POST } = vi.hoisted(() => ({
-  POST: vi.fn(() => ({
+const { GET } = vi.hoisted(() => ({
+  GET: vi.fn(() => ({
     status: 200,
     json: async () => ({ month: { 
       id: 'month1', 
@@ -131,14 +131,14 @@ const { POST } = vi.hoisted(() => ({
       averageGlucose: 130,
       runIds: ['run1', 'run2'],
       createdAt: '2025-01-01T00:00:00Z',
-      updatedAt: '2025-02-15T00:00:00Z'
+      updatedAt: '2025-01-01T00:00:00Z'
     }})
   }))
 }));
 
 // Mock the actual route import
 vi.mock('../../app/api/months/[id]/calculate/route', () => ({
-  POST
+  GET
 }));
 
 describe('Month Calculate API', () => {
@@ -147,16 +147,13 @@ describe('Month Calculate API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequest = new NextRequest('http://localhost:3000/api/months/month1/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        useWeightedAverage: false
-      })
+      method: 'GET'
     });
   });
   
-  describe('POST /api/months/:id/calculate', () => {
+  describe('GET /api/months/:id/calculate', () => {
     it('should calculate month statistics', async () => {
-      const response = await POST(mockRequest, { params: { id: 'month1' } });
+      const response = await GET(mockRequest, { params: { id: 'month1' } });
       const data = await response.json();
       
       expect(response.status).toBe(200);
@@ -165,13 +162,13 @@ describe('Month Calculate API', () => {
     });
     
     it('should handle month not found', async () => {
-      // Override the POST mock for this test
-      POST.mockImplementationOnce(() => ({
+      // Override the GET mock for this test
+      GET.mockImplementationOnce(() => ({
         status: 404,
         json: async () => ({ error: 'Month not found' })
       }));
       
-      const response = await POST(mockRequest, { params: { id: 'nonexistent' } });
+      const response = await GET(mockRequest, { params: { id: 'nonexistent' } });
       
       expect(response.status).toBe(404);
       const data = await response.json();
@@ -179,33 +176,30 @@ describe('Month Calculate API', () => {
     });
     
     it('should handle database errors', async () => {
-      // Override the POST mock for this test
-      POST.mockImplementationOnce(() => ({
+      // Override the GET mock for this test
+      GET.mockImplementationOnce(() => ({
         status: 500,
-        json: async () => ({ error: 'Failed to update month' })
+        json: async () => ({ error: 'Failed to fetch runs' })
       }));
       
-      const response = await POST(mockRequest, { params: { id: 'month1' } });
+      const response = await GET(mockRequest, { params: { id: 'month1' } });
       
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Failed to update month');
+      expect(data.error).toBe('Failed to fetch runs');
     });
     
     it('should use weighted average when specified', async () => {
-      const weightedRequest = new NextRequest('http://localhost:3000/api/months/month1/calculate', {
-        method: 'POST',
-        body: JSON.stringify({
-          useWeightedAverage: true
-        })
+      const weightedRequest = new NextRequest('http://localhost:3000/api/months/month1/calculate?useWeightedAverage=true', {
+        method: 'GET'
       });
       
-      await POST(weightedRequest, { params: { id: 'month1' } });
+      await GET(weightedRequest, { params: { id: 'month1' } });
       
       // Check that the request was made with useWeightedAverage=true
-      expect(POST).toHaveBeenCalledWith(
+      expect(GET).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: expect.stringContaining('/api/months/month1/calculate')
+          url: expect.stringContaining('useWeightedAverage=true')
         }),
         { params: { id: 'month1' } }
       );

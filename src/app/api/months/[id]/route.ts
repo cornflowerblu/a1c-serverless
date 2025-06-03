@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '../../../../supabase/client';
+import { createClient } from '@supabase/supabase-js';
 import { PUT, DELETE } from '../route';
 
 /**
@@ -12,14 +13,24 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, getToken } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const monthId = params.id;
-    const supabase = createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
+          },
+        },
+      }
+    );
     
     // Get month
     const { data, error } = await supabase
@@ -43,7 +54,8 @@ export async function GET(
       endDate: data.end_date,
       calculatedA1C: data.calculated_a1c,
       averageGlucose: data.average_glucose,
-      runs: data.runs ? data.runs.map((run) => ({
+      runIds: data.run_ids || [],
+      runs: data.runs ? data.runs.map((run: any) => ({
         id: run.id,
         userId: run.user_id,
         name: run.name,

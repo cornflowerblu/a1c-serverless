@@ -1,26 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
-import { createClient } from '../../../../../supabase/client';
+import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
 import { calculateMonthStatistics } from '../../../../../utils/month-management';
 import type { Month, Run } from '../../../../../types/glucose';
 
 /**
- * POST /api/months/:id/calculate
- * Calculates A1C and average glucose for a month
+ * PUT /api/months/:id/calculate
+ * Calculates A1C and average glucose for a month and updates the record
  */
-export async function POST(
+export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = auth();
+    const { userId, getToken } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const monthId = params.id;
-    const supabase = createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
+          },
+        },
+      }
+    );
     
     // Get month
     const { data: monthData, error: monthError } = await supabase
@@ -115,7 +126,7 @@ export async function POST(
     
     return NextResponse.json({ month: result });
   } catch (error) {
-    console.error('Error in POST /api/months/:id/calculate:', error);
+    console.error('Error in PUT /api/months/:id/calculate:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
