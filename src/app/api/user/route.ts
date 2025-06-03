@@ -1,10 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/app/lib/client';
 import { NextResponse } from 'next/server';
-import { Database } from '@/types/supabase';
 
 export async function GET() {
-  const { userId, getToken } = await auth();
+  const { userId } = await auth();
 
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -12,17 +11,7 @@ export async function GET() {
 
   try {
     // Create a Supabase client with the Clerk session token
-    const supabaseClient = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
-          },
-        },
-      }
-    );
+    const supabaseClient = createServerSupabaseClient();
 
     // Fetch users from Supabase
     const { data: users, error } = await supabaseClient.from('users').select();
