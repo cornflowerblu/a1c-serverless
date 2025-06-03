@@ -19,5 +19,8 @@
     "react": {
       "version": "detect"
     }
-  }
+  },
+  "ignorePatterns":[
+    "src/supabase/functions/*"
+  ]
 }

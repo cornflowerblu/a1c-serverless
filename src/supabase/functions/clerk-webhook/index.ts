@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Webhook } from 'https://esm.sh/svix@1.15.0'
@@ -145,20 +146,20 @@ Deno.serve(async (req) => {
       const clerkId = payload.data.id
       
       // Option 1: Hard delete the user
-      // const { error } = await supabase
-      //   .from('users')
-      //   .delete()
-      //   .eq('clerk_id', clerkId)
-      
-      // Option 2: Soft delete (recommended for data integrity)
       const { error } = await supabase
         .from('users')
-        .update({
-          "updatedAt": new Date(),
-          // If you've added the deleted_at column:
-          // deleted_at: new Date().toISOString()
-        })
+        .delete()
         .eq('clerk_id', clerkId)
+      
+      // Option 2: Soft delete (recommended for data integrity)
+      // const { error } = await supabase
+      //   .from('users')
+      //   .update({
+      //     "updatedAt": new Date(),
+      //     // If you've added the deleted_at column:
+      //     // deleted_at: new Date().toISOString()
+      //   })
+      //   .eq('clerk_id', clerkId)
         
       if (error) {
         console.error('Error deleting user:', error)
