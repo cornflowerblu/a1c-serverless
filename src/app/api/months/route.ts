@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs';
-import { createClient } from '../../../supabase/client';
-import { createMonth } from '../../../utils/month-management';
-import type { Month } from '../../../types/glucose';
+import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
+import { createMonth } from '@/utils/month-management';
+import { Database } from '@/types/supabase';
 
 /**
  * GET /api/months
  * Retrieves all months for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId, getToken } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const supabase = createClient();
+    const supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
+          },
+        },
+      }
+    );
     
     const { data, error } = await supabase
       .from('months')
@@ -38,7 +48,6 @@ export async function GET(request: NextRequest) {
       endDate: month.end_date,
       calculatedA1C: month.calculated_a1c,
       averageGlucose: month.average_glucose,
-      runIds: month.run_ids || [],
       createdAt: month.created_at,
       updatedAt: month.updated_at
     }));
@@ -56,7 +65,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -76,22 +85,28 @@ export async function POST(request: NextRequest) {
     // Create month object
     const month = createMonth(userId, name, start, end);
     
-    const supabase = createClient();
+    const supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${await (await auth()).getToken({ template: 'supabase' })}`,
+          },
+        },
+      }
+    );
     
     // Insert into database
     const { data, error } = await supabase
       .from('months')
       .insert({
-        id: month.id,
         user_id: month.userId,
         name: month.name,
-        start_date: month.startDate,
-        end_date: month.endDate,
+        start_date: month.startDate.toISOString(),
+        end_date: month.endDate.toISOString(),
         calculated_a1c: month.calculatedA1C,
-        average_glucose: month.averageGlucose,
-        run_ids: month.runIds,
-        created_at: month.createdAt,
-        updated_at: month.updatedAt
+        average_glucose: month.averageGlucose
       })
       .select()
       .single();
@@ -110,7 +125,6 @@ export async function POST(request: NextRequest) {
       endDate: data.end_date,
       calculatedA1C: data.calculated_a1c,
       averageGlucose: data.average_glucose,
-      runIds: data.run_ids || [],
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -128,7 +142,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId } = auth();
+    const { userId, getToken } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -138,7 +152,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json();
     const { name, startDate, endDate } = body;
     
-    const supabase = createClient();
+    const supabase = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
+          },
+        },
+      }
+    );
     
     // Check if month exists and belongs to user
     const { data: existingMonth, error: fetchError } = await supabase
@@ -153,7 +177,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
     
     // Prepare update data
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date()
     };
     
@@ -211,7 +235,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       endDate: data.end_date,
       calculatedA1C: data.calculated_a1c,
       averageGlucose: data.average_glucose,
-      runIds: data.run_ids || [],
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -229,14 +252,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
  */
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId } = auth();
+    const { userId, getToken } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const monthId = params.id;
-    const supabase = createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${await getToken({ template: 'supabase' })}`,
+          },
+        },
+      }
+    );
     
     // Check if month exists and belongs to user
     const { data: existingMonth, error: fetchError } = await supabase

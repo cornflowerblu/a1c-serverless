@@ -9,7 +9,7 @@ import { Database } from '@/types/supabase';
  * GET /api/readings
  * Retrieves all glucose readings for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { userId, getToken } = await auth();
     

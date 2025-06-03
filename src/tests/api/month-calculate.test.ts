@@ -18,7 +18,7 @@ vi.mock('next/server', async (importOriginal) => {
 // Mock the database client
 vi.mock('../../supabase/client', () => ({
   createClient: vi.fn(() => ({
-    from: vi.fn((table) => ({
+    from: vi.fn((_table) => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           eq: vi.fn(() => ({

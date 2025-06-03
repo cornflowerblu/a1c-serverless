@@ -48,6 +48,20 @@ export interface Month {
   updatedAt: Date;
 }
 
+// For API responses
+export interface MonthData {
+  id: string;
+  userId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  calculatedA1C: number | null;
+  averageGlucose: number | null;
+  runIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type MealContextWeights = {
   [key in MealContext]?: number;
 };

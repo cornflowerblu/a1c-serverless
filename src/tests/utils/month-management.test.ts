@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMonth, addRunToMonth, calculateMonthStatistics } from '../../utils/month-management';
-import type { Run, Month, GlucoseReading } from '../../types/glucose';
+import type { Run, Month } from '../../types/glucose';
 
 // Mock the A1C calculator functions
 vi.mock('../../utils/a1c-calculator', () => ({

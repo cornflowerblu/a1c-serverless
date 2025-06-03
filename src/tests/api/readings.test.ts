@@ -19,7 +19,7 @@ vi.mock('next/server', async (importOriginal) => {
 // Mock the database client
 vi.mock('../../supabase/client', () => ({
   createClient: vi.fn(() => ({
-    from: vi.fn((table) => ({
+    from: vi.fn((_table) => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           order: vi.fn(() => ({
@@ -112,7 +112,7 @@ const { GET, POST } = vi.hoisted(() => ({
       }
     ]})
   })),
-  POST: vi.fn((request) => {
+  POST: vi.fn((_request) => {
     // Mock implementation that checks if validateGlucoseReading was called
     const mockValidateGlucoseReading = validateGlucoseReading as unknown as ReturnType<typeof vi.fn>;
     
@@ -210,7 +210,7 @@ describe('Readings API', () => {
       });
       
       // Call the function directly to trigger the validation
-      validateGlucoseReading({} as any);
+      validateGlucoseReading({} as unknown);
       
       await POST(mockPostRequest);
       

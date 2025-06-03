@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { validateGlucoseReading } from '../../utils/glucose-validation';
 
 // Mock the Next.js Response
 vi.mock('next/server', async (importOriginal) => {
@@ -19,7 +18,7 @@ vi.mock('next/server', async (importOriginal) => {
 // Mock the database client
 vi.mock('../../supabase/client', () => ({
   createClient: vi.fn(() => ({
-    from: vi.fn((table) => ({
+    from: vi.fn((_table) => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           order: vi.fn(() => ({
