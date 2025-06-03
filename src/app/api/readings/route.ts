@@ -11,18 +11,31 @@ import type { MealContext } from '@/types/glucose';
  */
 export async function GET(_request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const supabase = createServerSupabaseClient();
     
+    // First get the user ID from clerk_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    // Then get the glucose readings using the actual user ID
     const { data, error } = await supabase
       .from('glucose_readings')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userData.id)
       .order('timestamp', { ascending: false });
     
     if (error) {
@@ -56,13 +69,25 @@ export async function GET(_request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = createServerSupabaseClient();
+    
+    // First get the user ID from clerk_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
     
     const body = await request.json();
     const { value, timestamp, mealContext, notes, runId } = body;
@@ -70,7 +95,7 @@ export async function POST(request: NextRequest) {
     // Create reading object with required fields for validation
     const readingForValidation = {
       id: 'temp-id', // Temporary ID for validation
-      userId,
+      userId: userData.id,
       value: Number(value),
       timestamp: new Date(timestamp),
       mealContext: mealContext as MealContext,
@@ -89,7 +114,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('glucose_readings')
       .insert({
-        user_id: userId,
+        user_id: userData.id,
         value: Number(value),
         timestamp: timestamp, // Use the timestamp string directly
         meal_context: mealContext,

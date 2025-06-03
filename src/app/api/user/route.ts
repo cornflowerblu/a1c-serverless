@@ -14,7 +14,7 @@ export async function GET() {
     const supabaseClient = createServerSupabaseClient();
 
     // Fetch users from Supabase
-    const { data: users, error } = await supabaseClient.from('users').select();
+    const { data: users, error } = await supabaseClient.from('users').select()
 
     if (error) {
       console.error('Supabase error:', error);
