@@ -10,6 +10,7 @@ export default function HomePage() {
   // Redirect authenticated users to dashboard
   useEffect(() => {
     // This effect will only run on the client side
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const redirectToDashboard = async () => {
       try {
         // Small delay to avoid immediate redirect which can cause flicker
