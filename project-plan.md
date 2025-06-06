@@ -31,7 +31,7 @@ This document outlines the implementation plan for the A1C Estimator application
 
 4. **CI/CD Pipeline**
    - Set up GitHub repository
-   - Configure GitHub Actions for CI/CD
+   - Configure GitHub Actions for CI/CD (we'll do this later)
    - Set up Vercel project and deployment
    - Configure environment variables
 

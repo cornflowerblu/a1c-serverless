@@ -87,7 +87,11 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           disabled={isSubmitting}
         />
         {errors.timestamp && (
-          <p className="mt-1 text-sm text-red-600">{errors.timestamp.message}</p>
+          <p className="mt-1 text-sm text-red-600">
+            {errors.timestamp.message?.includes('future') 
+              ? 'Timestamp cannot be in the future' 
+              : errors.timestamp.message}
+          </p>
         )}
       </div>
       
