@@ -15,7 +15,7 @@ export default function HomePage() {
       try {
         // Small delay to avoid immediate redirect which can cause flicker
         await new Promise(resolve => setTimeout(resolve, 100));
-        router.push('/dashboard');
+        router.replace('/dashboard');
       } catch (error) {
         console.error('Error redirecting to dashboard:', error);
       }
