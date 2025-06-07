@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CreateRunForm } from '../components/CreateRunForm';
+import { RunCard } from '../components/RunCard';
+import { RunsFilter } from '../components/RunsFilter';
+import { Card, CardContent } from '../components/ui/card';
+import { Activity } from 'lucide-react';
 
 interface Run {
   id: string;
@@ -19,11 +23,10 @@ interface Run {
 
 export default function RunsPage() {
   const [runs, setRuns] = useState<Run[]>([]);
+  const [filteredRuns, setFilteredRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const router = useRouter();
 
   // Fetch runs on component mount
@@ -35,7 +38,9 @@ export default function RunsPage() {
           throw new Error('Failed to fetch runs');
         }
         const data = await response.json();
-        setRuns(data.runs || []);
+        const fetchedRuns = data.runs || [];
+        setRuns(fetchedRuns);
+        setFilteredRuns(fetchedRuns);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -47,21 +52,17 @@ export default function RunsPage() {
   }, []);
 
   // Handle form submission to create a new run
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (formData: { name: string; startDate: string; endDate: string }) => {
     try {
-      setLoading(true);
+      setIsSubmitting(true);
+      setError(null);
+      
       const response = await fetch('/api/runs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name,
-          startDate,
-          endDate,
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -69,150 +70,144 @@ export default function RunsPage() {
         throw new Error(errorData.error || 'Failed to create run');
       }
 
-      // Reset form and refresh runs
-      setName('');
-      setStartDate('');
-      setEndDate('');
-      
-      // Refresh the page to show the new run
-      router.refresh();
-      
       // Fetch updated runs
       const updatedResponse = await fetch('/api/runs');
       const updatedData = await updatedResponse.json();
-      setRuns(updatedData.runs || []);
+      const updatedRuns = updatedData.runs || [];
+      setRuns(updatedRuns);
+      setFilteredRuns(updatedRuns);
+      
+      // Refresh the page to show the new run
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  // Handle filter changes
+  const handleFilterChange = (filters: { search: string; a1cStatus: string; sortBy: string }) => {
+    let result = [...runs];
+    
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(run => 
+        run.name.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Apply A1C status filter
+    if (filters.a1cStatus !== 'all') {
+      result = result.filter(run => {
+        if (!run.calculatedA1C) return filters.a1cStatus === 'na';
+        
+        const a1c = run.calculatedA1C;
+        switch (filters.a1cStatus) {
+          case 'normal':
+            return a1c < 5.7;
+          case 'prediabetic':
+            return a1c >= 5.7 && a1c < 6.5;
+          case 'diabetic':
+            return a1c >= 6.5;
+          case 'na':
+            return a1c === null;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Apply sorting
+    result.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'a1c-high':
+          if (a.calculatedA1C === null) return 1;
+          if (b.calculatedA1C === null) return -1;
+          return b.calculatedA1C - a.calculatedA1C;
+        case 'a1c-low':
+          if (a.calculatedA1C === null) return 1;
+          if (b.calculatedA1C === null) return -1;
+          return a.calculatedA1C - b.calculatedA1C;
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'recent':
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+    
+    setFilteredRuns(result);
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Runs Management</h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Runs</h1>
+          <p className="text-gray-500">
+            View and manage your glucose tracking runs
+          </p>
+        </div>
+      </div>
       
       {/* Error message */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
       
       {/* Create new run form */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Create New Run</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-              Run Name
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="startDate">
-              Start Date
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              // required
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="endDate">
-              End Date
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? 'Creating...' : 'Create Run'}
-            </button>
-          </div>
-        </form>
-      </div>
+      <CreateRunForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
       
       {/* Runs list */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8">
-        <h2 className="text-xl font-semibold mb-4">Your Runs</h2>
-        {loading && <p>Loading runs...</p>}
-        {!loading && runs.length === 0 && <p>No runs found. Create your first run above.</p>}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Your Runs ({runs.length})</h2>
+        </div>
+        
+        {/* Filters */}
         {!loading && runs.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead>
-                <tr>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Date Range
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    A1C
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Avg. Glucose
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {runs.map((run) => (
-                  <tr key={run.id}>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {run.name}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {formatDate(run.startDate)} - {formatDate(run.endDate)}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {run.calculatedA1C ? run.calculatedA1C.toFixed(1) : 'N/A'}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {run.averageGlucose ? run.averageGlucose.toFixed(0) : 'N/A'}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      <Link href={`/runs/${run.id}`} className="text-blue-500 hover:text-blue-700 mr-2">
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <RunsFilter 
+            totalRuns={filteredRuns.length} 
+            onFilterChange={handleFilterChange} 
+          />
+        )}
+        
+        {loading ? (
+          <div className="text-center py-8">
+            <p>Loading runs...</p>
+          </div>
+        ) : runs.length === 0 ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <div className="text-gray-500">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                  <Activity className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">No runs found</h3>
+                <p>Create your first glucose tracking run to get started</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : filteredRuns.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <div className="text-gray-500 mb-2">No runs found for the selected filters.</div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredRuns.map((run) => (
+              <RunCard 
+                key={run.id} 
+                {...run}
+              />
+            ))}
           </div>
         )}
       </div>
     </div>
-  );
-}
+  )}
