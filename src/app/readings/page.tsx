@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 
 interface GlucoseReading {
   id: string;
+  userId: string;
+  userName?: string | null;
   value: number;
   timestamp: string;
   mealContext: string;
@@ -54,6 +56,25 @@ export default function ReadingsPage() {
       .join(' ');
   };
   
+  // Group readings by user when there are multiple users
+  const readingsByUser = readings.reduce((acc, reading) => {
+    // Skip grouping if no userName is present
+    if (!reading.userName) {
+      return acc;
+    }
+    
+    if (!acc[reading.userId]) {
+      acc[reading.userId] = {
+        userName: reading.userName,
+        readings: []
+      };
+    }
+    acc[reading.userId].readings.push(reading);
+    return acc;
+  }, {} as Record<string, { userName: string, readings: GlucoseReading[] }>);
+  
+  const hasMultipleUsers = Object.keys(readingsByUser).length > 1;
+  
   return (
     <div className="max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -88,7 +109,39 @@ export default function ReadingsPage() {
             </Link>
           </p>
         </div>
+      ) : hasMultipleUsers ? (
+        // Display readings grouped by user
+        <div>
+          {Object.entries(readingsByUser).map(([userId, { userName, readings: userReadings }]) => (
+            <div key={userId} className="mb-8">
+              <h2 className="text-xl font-semibold mb-3 pb-2 border-b">{userName}'s Readings</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-200">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="py-2 px-4 border-b text-left">Date & Time</th>
+                      <th className="py-2 px-4 border-b text-left">Value (mg/dL)</th>
+                      <th className="py-2 px-4 border-b text-left">Meal Context</th>
+                      <th className="py-2 px-4 border-b text-left">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userReadings.map((reading) => (
+                      <tr key={reading.id} className="hover:bg-gray-50">
+                        <td className="py-2 px-4 border-b">{formatDate(reading.timestamp)}</td>
+                        <td className="py-2 px-4 border-b">{reading.value}</td>
+                        <td className="py-2 px-4 border-b">{formatMealContext(reading.mealContext)}</td>
+                        <td className="py-2 px-4 border-b">{reading.notes || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
+        // Display readings in a single table (for single user)
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white border border-gray-200">
             <thead>
