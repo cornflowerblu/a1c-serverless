@@ -35,9 +35,7 @@ export async function PUT(
     }
     
     const userId = userData.id;
-    
     const monthId = params.id;
-    const supabase = createServerSupabaseClient();
     
     // Get month
     const { data: monthData, error: monthError } = await supabase
