@@ -57,7 +57,7 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
   };
   
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4" data-testid="glucose-form">
       <div>
         <label htmlFor="value" className="block text-sm font-medium text-gray-700">
           Glucose Value (mg/dL)
@@ -69,9 +69,10 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           placeholder="Enter glucose value"
           disabled={isSubmitting}
+          data-testid="glucose-value-input"
         />
         {errors.value && (
-          <p className="mt-1 text-sm text-red-600">{errors.value.message}</p>
+          <p className="mt-1 text-sm text-red-600" data-testid="value-error">{errors.value.message}</p>
         )}
       </div>
       
@@ -85,9 +86,10 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           {...register('timestamp')}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           disabled={isSubmitting}
+          data-testid="timestamp-input"
         />
         {errors.timestamp && (
-          <p className="mt-1 text-sm text-red-600">
+          <p className="mt-1 text-sm text-red-600" data-testid="timestamp-error">
             {errors.timestamp.message?.includes('future') 
               ? 'Timestamp cannot be in the future' 
               : errors.timestamp.message}
@@ -104,6 +106,7 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           {...register('mealContext')}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           disabled={isSubmitting}
+          data-testid="meal-context-select"
         >
           <option value="">Select meal context</option>
           {mealContextOptions.map((option) => (
@@ -113,7 +116,7 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           ))}
         </select>
         {errors.mealContext && (
-          <p className="mt-1 text-sm text-red-600">
+          <p className="mt-1 text-sm text-red-600" data-testid="meal-context-error">
             {errors.mealContext.message || 'Meal context is required'}
           </p>
         )}
@@ -130,9 +133,10 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           placeholder="Optional notes about this reading"
           disabled={isSubmitting}
+          data-testid="notes-input"
         />
         {errors.notes && (
-          <p className="mt-1 text-sm text-red-600">{errors.notes.message}</p>
+          <p className="mt-1 text-sm text-red-600" data-testid="notes-error">{errors.notes.message}</p>
         )}
       </div>
       
@@ -141,6 +145,7 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
           type="submit"
           disabled={isSubmitting}
           className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+          data-testid="submit-button"
         >
           {isSubmitting ? 'Saving...' : 'Save Reading'}
         </button>
