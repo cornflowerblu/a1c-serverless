@@ -44,9 +44,14 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
   ];
   
   // Handle form submission
-  const handleFormSubmit = async (data: GlucoseReadingInput) => {
+  const handleFormSubmit = async (formData: GlucoseReadingInput) => {
     try {
       setIsSubmitting(true);
+      // Ensure timestamp is in proper ISO format with timezone
+      const data = {
+        ...formData,
+        timestamp: formData.timestamp ? new Date(formData.timestamp).toISOString() : new Date().toISOString()
+      };
       await onSubmit(data);
       reset(); // Reset form after successful submission
     } catch (error) {

@@ -57,6 +57,7 @@ describe('Glucose Readings API Endpoints', () => {
       delete: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
       single: vi.fn()
     };
     
@@ -88,7 +89,7 @@ describe('Glucose Readings API Endpoints', () => {
       const response = await GET(mockRequest);
       
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
-      expect(mockSupabase.select).toHaveBeenCalledWith('id');
+      expect(mockSupabase.select).toHaveBeenCalledWith('id, role');
       expect(mockSupabase.eq).toHaveBeenCalledWith('clerk_id', 'clerk_user_123');
       expect(NextResponse.json).toHaveBeenCalledWith(
         { error: 'User not found' },
@@ -136,7 +137,7 @@ describe('Glucose Readings API Endpoints', () => {
       
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
       expect(mockSupabase.from).toHaveBeenCalledWith('glucose_readings');
-      expect(mockSupabase.eq).toHaveBeenCalledWith('user_id', 'db_user_123');
+      expect(mockSupabase.eq).toHaveBeenCalledWith('clerk_id', 'clerk_user_123');
       expect(mockSupabase.order).toHaveBeenCalledWith('timestamp', { ascending: false });
       
       expect(NextResponse.json).toHaveBeenCalledWith({
@@ -144,6 +145,7 @@ describe('Glucose Readings API Endpoints', () => {
           {
             id: 'reading_1',
             userId: 'db_user_123',
+            userName: null,
             value: 120,
             timestamp: '2023-05-01T12:00:00Z',
             mealContext: 'FASTING',
@@ -155,6 +157,7 @@ describe('Glucose Readings API Endpoints', () => {
           {
             id: 'reading_2',
             userId: 'db_user_123',
+            userName: null,
             value: 140,
             timestamp: '2023-05-01T18:00:00Z',
             mealContext: 'AFTER_DINNER',

@@ -38,7 +38,7 @@ export default function AddReadingPage() {
       <h1 className="text-2xl font-bold mb-6">Add Glucose Reading</h1>
       
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-6">
+        <div data-testid="error-message" className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-6">
           {error}
         </div>
       )}
