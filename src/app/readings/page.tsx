@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { GlucoseReadingCard } from '../components/GlucoseReadingCard';
+import { AddReadingDialog } from '../components/add-reading-dialog';
 
 interface GlucoseReading {
   id: string;
@@ -180,11 +181,7 @@ export default function ReadingsPage() {
             <p className="text-gray-600 text-sm">Viewing readings for {readings[0].userName}</p>
           ) : null}
         </div>
-        <Link href="/readings/add">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-            Add Reading
-          </Button>
-        </Link>
+        <AddReadingDialog />
       </div>
       
       {error && (
@@ -310,7 +307,7 @@ export default function ReadingsPage() {
           </div>
 
           {/* Readings Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4 bg-gray-50/50 rounded-lg border border-gray-100">
             {filteredReadings.map((reading) => (
               <GlucoseReadingCard key={reading.id} reading={reading as never} />
             ))}
