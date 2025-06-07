@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
           clerk_id: clerkId,
           email: primaryEmail,
           name: `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim(),
-          role: 'user',
+          user_role: 'user',
           "updatedAt": new Date(),
           // Add preferences and medical_profile if you've added these columns
           // preferences: {
