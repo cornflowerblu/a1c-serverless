@@ -23,9 +23,25 @@ export const glucoseReadingSchema = z.object({
     .max(1000, 'Glucose value cannot exceed 1000 mg/dL'),
   
   timestamp: z.string()
-    .datetime('Invalid date format')
     .refine(
-      (date) => new Date(date) <= new Date(),
+      (dateStr) => {
+        try {
+          // Parse the date string to ensure it's valid
+          const date = new Date(dateStr);
+          return !isNaN(date.getTime());
+        } catch (e) {
+          return false;
+        }
+      },
+      'Invalid date format'
+    )
+    .refine(
+      (dateStr) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        // Compare only the date parts to avoid millisecond precision issues
+        return date <= now;
+      },
       'Timestamp cannot be in the future'
     ),
   

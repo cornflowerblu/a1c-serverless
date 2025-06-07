@@ -4,6 +4,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { glucoseReadingSchema, type GlucoseReadingInput } from '@/utils/schemas/glucose-schema';
 import type { MealContext } from '@/types/glucose';
 
+// Helper function to format date for datetime-local input
+function formatDateTimeLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 interface GlucoseReadingFormProps {
   onSubmit: (data: GlucoseReadingInput) => Promise<void>;
   initialData?: Partial<GlucoseReadingInput>;
@@ -22,7 +33,7 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
     resolver: zodResolver(glucoseReadingSchema),
     defaultValues: {
       value: initialData?.value || undefined,
-      timestamp: initialData?.timestamp || new Date().toISOString().slice(0, 16),
+      timestamp: initialData?.timestamp || formatDateTimeLocal(new Date()),
       mealContext: initialData?.mealContext || undefined,
       notes: initialData?.notes || '',
       runId: initialData?.runId
@@ -47,11 +58,22 @@ export function GlucoseReadingForm({ onSubmit, initialData }: GlucoseReadingForm
   const handleFormSubmit = async (formData: GlucoseReadingInput) => {
     try {
       setIsSubmitting(true);
+      
       // Ensure timestamp is in proper ISO format with timezone
+      // Create a new Date object from the input and ensure it's not in the future
+      let timestamp = formData.timestamp ? new Date(formData.timestamp) : new Date();
+      const now = new Date();
+      
+      // If timestamp is in the future, use current time instead
+      if (timestamp > now) {
+        timestamp = now;
+      }
+      
       const data = {
         ...formData,
-        timestamp: formData.timestamp ? new Date(formData.timestamp).toISOString() : new Date().toISOString()
+        timestamp: timestamp.toISOString()
       };
+      
       await onSubmit(data);
       reset(); // Reset form after successful submission
     } catch (error) {
