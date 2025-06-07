@@ -89,7 +89,7 @@ describe('Glucose Readings API Endpoints', () => {
       const response = await GET(mockRequest);
       
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
-      expect(mockSupabase.select).toHaveBeenCalledWith('id, role');
+      expect(mockSupabase.select).toHaveBeenCalledWith('id, user_role');
       expect(mockSupabase.eq).toHaveBeenCalledWith('clerk_id', 'clerk_user_123');
       expect(NextResponse.json).toHaveBeenCalledWith(
         { error: 'User not found' },
