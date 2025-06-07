@@ -34,6 +34,16 @@ export function Navigation() {
         >
           Readings
         </Link>
+        <Link 
+          href="/runs" 
+          className={`px-3 py-2 rounded-md text-sm font-medium ${
+            isActive('/runs') 
+              ? 'bg-gray-900 text-white' 
+              : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+          }`}
+        >
+          Runs
+        </Link>
       </nav>
     </SignedIn>
   );

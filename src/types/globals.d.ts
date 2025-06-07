@@ -6,6 +6,8 @@ export interface AuthToken {
   app_metadata: {
     provider: string;
   };
+  /** Role for supabase */
+  role: string;
   /** Audience for the token */
   aud: string;
   /** Authorized party (client ID) */
