@@ -244,6 +244,7 @@ A GitHub Actions workflow that:
 ## Known Issues
 
 - Email link logins don't work due to URL mismatch issues (to be fixed in future updates)
+- Glucose reading form submission fails due to date validation errors (needs fixing in the next update)
 
 ## Next Steps
 
