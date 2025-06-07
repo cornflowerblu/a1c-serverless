@@ -67,7 +67,11 @@ export default function ReadingsPage() {
   function isWithinDateRange(timestamp: Date, range: string): boolean {
     const date = new Date(timestamp);
     const now = new Date();
+    
+    // Reset hours to compare dates only
+    const dateWithoutTime = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -80,13 +84,13 @@ export default function ReadingsPage() {
 
     switch (range) {
       case "today":
-        return date >= today;
+        return dateWithoutTime.getTime() === today.getTime();
       case "yesterday":
-        return date >= yesterday && date < today;
+        return dateWithoutTime.getTime() === yesterday.getTime();
       case "last7days":
-        return date >= week;
+        return dateWithoutTime >= week;
       case "last30days":
-        return date >= month;
+        return dateWithoutTime >= month;
       case "all":
       default:
         return true;
