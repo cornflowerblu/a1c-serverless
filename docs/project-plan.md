@@ -54,9 +54,10 @@ This document outlines the implementation plan for the A1C Estimator application
    - ✅ Create API endpoints for CRUD operations (TDD approach)
    - ✅ Develop form components for adding readings (TDD approach)
    - ✅ Implement validation with Zod (TDD approach)
-   - Implement full functionality for skipped tests
-   - Add more comprehensive validation
-   - Connect the form to the API endpoints
+   - ✅ Connect the form to the API endpoints
+   - ✅ Add navigation and pages for readings
+   - ✅ Implement caregiver access to user readings
+   - ✅ Set up CI/CD with GitHub Actions for testing and building
 
 3. **Runs Management**
 
