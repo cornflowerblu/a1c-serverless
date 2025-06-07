@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="600px" viewBox="0 0 800 600" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Dashboard Preview</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#4F46E5" offset="0%"></stop>
+            <stop stop-color="#0EA5E9" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Dashboard-Preview" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="url(#linearGradient-1)" x="0" y="0" width="800" height="600"></rect>
+        <g id="Chart" transform="translate(100.000000, 150.000000)">
+            <rect id="Background" fill="#FFFFFF" opacity="0.9" x="0" y="0" width="600" height="300" rx="8"></rect>
+            <text id="Glucose-Readings" font-family="Arial-BoldMT, Arial" font-size="18" font-weight="bold" fill="#1E293B">
+                <tspan x="30" y="40">Glucose Readings</tspan>
+            </text>
+            <g id="Chart-Lines" transform="translate(30.000000, 70.000000)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <polyline id="Line-1" stroke="#4F46E5" points="0 150 90 100 180 120 270 60 360 90 450 30 540 70"></polyline>
+                <polyline id="Line-2" stroke="#0EA5E9" opacity="0.6" points="0 180 90 160 180 190 270 130 360 150 450 110 540 140"></polyline>
+            </g>
+            <g id="Data-Points" transform="translate(30.000000, 70.000000)" fill="#4F46E5">
+                <circle cx="0" cy="150" r="5"></circle>
+                <circle cx="90" cy="100" r="5"></circle>
+                <circle cx="180" cy="120" r="5"></circle>
+                <circle cx="270" cy="60" r="5"></circle>
+                <circle cx="360" cy="90" r="5"></circle>
+                <circle cx="450" cy="30" r="5"></circle>
+                <circle cx="540" cy="70" r="5"></circle>
+            </g>
+            <g id="X-Axis" transform="translate(30.000000, 250.000000)" fill="#64748B">
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="0" y="12">Mon</tspan>
+                </text>
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="90" y="12">Tue</tspan>
+                </text>
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="180" y="12">Wed</tspan>
+                </text>
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="270" y="12">Thu</tspan>
+                </text>
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="360" y="12">Fri</tspan>
+                </text>
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="450" y="12">Sat</tspan>
+                </text>
+                <text font-family="Arial" font-size="12" font-weight="normal">
+                    <tspan x="540" y="12">Sun</tspan>
+                </text>
+            </g>
+        </g>
+        <g id="Top-Bar" transform="translate(100.000000, 50.000000)" fill="#FFFFFF">
+            <rect id="Rectangle" x="0" y="0" width="600" height="60" rx="8"></rect>
+            <text id="A1C-Estimate:-6.2%" font-family="Arial-BoldMT, Arial" font-size="18" font-weight="bold" fill="#1E293B">
+                <tspan x="30" y="35">A1C Estimate: 6.2%</tspan>
+            </text>
+            <text id="Last-30-days" font-family="Arial" font-size="14" font-weight="normal" fill="#64748B">
+                <tspan x="480" y="35">Last 30 days</tspan>
+            </text>
+        </g>
+        <g id="Bottom-Cards" transform="translate(100.000000, 480.000000)">
+            <g id="Card-1">
+                <rect fill="#FFFFFF" opacity="0.9" x="0" y="0" width="180" height="80" rx="8"></rect>
+                <text font-family="Arial" font-size="14" font-weight="normal" fill="#64748B">
+                    <tspan x="20" y="30">Average Reading</tspan>
+                </text>
+                <text font-family="Arial-BoldMT, Arial" font-size="24" font-weight="bold" fill="#1E293B">
+                    <tspan x="20" y="60">142 mg/dL</tspan>
+                </text>
+            </g>
+            <g id="Card-2" transform="translate(210.000000, 0.000000)">
+                <rect fill="#FFFFFF" opacity="0.9" x="0" y="0" width="180" height="80" rx="8"></rect>
+                <text font-family="Arial" font-size="14" font-weight="normal" fill="#64748B">
+                    <tspan x="20" y="30">Readings Count</tspan>
+                </text>
+                <text font-family="Arial-BoldMT, Arial" font-size="24" font-weight="bold" fill="#1E293B">
+                    <tspan x="20" y="60">24</tspan>
+                </text>
+            </g>
+            <g id="Card-3" transform="translate(420.000000, 0.000000)">
+                <rect fill="#FFFFFF" opacity="0.9" x="0" y="0" width="180" height="80" rx="8"></rect>
+                <text font-family="Arial" font-size="14" font-weight="normal" fill="#64748B">
+                    <tspan x="20" y="30">Highest Reading</tspan>
+                </text>
+                <text font-family="Arial-BoldMT, Arial" font-size="24" font-weight="bold" fill="#1E293B">
+                    <tspan x="20" y="60">210 mg/dL</tspan>
+                </text>
+            </g>
+        </g>
+    </g>
+</svg>
