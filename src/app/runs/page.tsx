@@ -27,10 +27,18 @@ export default function RunsPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateRunOpen, setIsCreateRunOpen] = useState(false);
   const router = useRouter();
 
   // Fetch runs on component mount
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check URL parameters for openCreateForm
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('openCreateForm') === 'true') {
+        setIsCreateRunOpen(true);
+      }
+    }
     async function fetchRuns() {
       try {
         const response = await fetch('/api/runs');
@@ -162,7 +170,7 @@ export default function RunsPage() {
       )}
       
       {/* Create new run form */}
-      <CreateRunForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <CreateRunForm onSubmit={handleSubmit} isSubmitting={isSubmitting} defaultOpen={isCreateRunOpen} />
       
       {/* Runs list */}
       <div className="space-y-6">

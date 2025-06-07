@@ -23,6 +23,7 @@ import {
   Target,
   Zap
 } from "lucide-react";
+import { AddReadingDialog } from "./add-reading-dialog";
 
 interface GlucoseReading {
   id: string;
@@ -211,12 +212,7 @@ export function Dashboard({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Recent Readings</CardTitle>
-            <Link href="/readings/add">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Reading
-              </Button>
-            </Link>
+              <AddReadingDialog />
           </CardHeader>
           <CardContent>
             {recentReadings.length > 0 ? (
@@ -329,16 +325,15 @@ export function Dashboard({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href="/readings/add" className="block">
-              <Button 
-                variant="outline" 
-                className="w-full h-auto p-6 flex flex-col items-center space-y-2"
-              >
-                <Plus className="w-6 h-6" />
-                <span>Add New Reading</span>
-              </Button>
-            </Link>
-            <Link href="/runs" className="block">
+            <Button 
+              variant="outline" 
+              className="w-full h-auto p-6 flex flex-col items-center space-y-2"
+              onClick={() => document.getElementById('add-reading-trigger')?.click()}
+            >
+              <Plus className="w-6 h-6" />
+              <span>Add New Reading</span>
+            </Button>
+            <Link href="/runs?openCreateForm=true" className="block">
               <Button 
                 variant="outline" 
                 className="w-full h-auto p-6 flex flex-col items-center space-y-2"
