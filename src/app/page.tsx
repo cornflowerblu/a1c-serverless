@@ -10,7 +10,6 @@ export default function HomePage() {
   // Redirect authenticated users to dashboard
   useEffect(() => {
     // This effect will only run on the client side
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const redirectToDashboard = async () => {
       try {
         // Small delay to avoid immediate redirect which can cause flicker
@@ -21,7 +20,11 @@ export default function HomePage() {
       }
     };
     
-    // We'll let the SignedIn component handle this check
+    // Call the function when the component mounts if the user is signed in
+    // We can use a simple flag to check if we're in a browser environment
+    if (typeof window !== 'undefined') {
+      redirectToDashboard();
+    }
   }, [router]);
   
   return (
