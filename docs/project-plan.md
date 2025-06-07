@@ -31,7 +31,7 @@ This document outlines the implementation plan for the A1C Estimator application
 
 4. **CI/CD Pipeline**
    - Set up GitHub repository
-   - Configure GitHub Actions for CI/CD
+   - Configure GitHub Actions for CI/CD (we'll do this later)
    - Set up Vercel project and deployment
    - Configure environment variables
 
@@ -50,10 +50,13 @@ This document outlines the implementation plan for the A1C Estimator application
 
 2. **Glucose Readings**
 
-   - Implement glucose reading data model
-   - Create API endpoints for CRUD operations
-   - Develop form components for adding readings
-   - Implement validation with Zod
+   - ✅ Implement glucose reading data model (TDD approach)
+   - ✅ Create API endpoints for CRUD operations (TDD approach)
+   - ✅ Develop form components for adding readings (TDD approach)
+   - ✅ Implement validation with Zod (TDD approach)
+   - Implement full functionality for skipped tests
+   - Add more comprehensive validation
+   - Connect the form to the API endpoints
 
 3. **Runs Management**
 

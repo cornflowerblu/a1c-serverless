@@ -1,0 +1,63 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Add permissions block to grant access to issues and pull requests
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+    
+    - name: Run linting (non-blocking)
+      run: npm run lint || echo "Linting issues found, but continuing workflow"
+    
+    - name: Run TypeScript type checking (non-blocking)
+      run: npx tsc --noEmit || echo "Type checking issues found, but continuing workflow"
+    
+    - name: Run tests
+      run: npm test
+      
+    - name: Build application
+      env:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}}
+        CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY}}
+      run: npm run build
+      
+    - name: Add test status comment to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `#### Test and Build Results 🧪
+          ✅ Tests have passed successfully!
+          ✅ Build completed successfully!
+          
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })

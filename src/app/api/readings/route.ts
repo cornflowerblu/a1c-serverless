@@ -4,12 +4,14 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerSupabaseClient } from '@/app/lib/client';
 import { validateGlucoseReading } from '@/utils/glucose-validation';
 import type { MealContext } from '@/types/glucose';
+import type { Json } from '@/types/supabase';
 
 /**
  * GET /api/readings
  * Retrieves all glucose readings for the authenticated user
+ * If the user is a caregiver, also retrieves readings for connected users
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
     
@@ -19,10 +21,10 @@ export async function GET(_request: NextRequest) {
 
     const supabase = createServerSupabaseClient();
     
-    // First get the user ID from clerk_id
+    // First get the user ID and role from clerk_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, role')
       .eq('clerk_id', clerkId)
       .single();
     
@@ -31,11 +33,56 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Then get the glucose readings using the actual user ID
+    // Check if a specific user ID is requested (for caregivers viewing a specific user)
+    const url = new URL(request.url);
+    const targetUserId = url.searchParams.get('userId');
+    
+    let userIds = [userData.id]; // Default to own user ID
+    
+    // If user is a caregiver, get connected users
+    if (userData.role === 'caregiver') {
+      if (targetUserId) {
+        // Check if caregiver has access to this specific user
+        const { data: connectionData, error: connectionError } = await supabase
+          .from('user_connections')
+          .select('user_id')
+          .eq('caregiver_id', userData.id)
+          .eq('user_id', targetUserId)
+          .maybeSingle();
+          
+        if (connectionError) {
+          console.error('Error checking connection:', connectionError);
+          return NextResponse.json({ error: 'Failed to verify connection' }, { status: 500 });
+        }
+        
+        if (connectionData) {
+          userIds = [targetUserId]; // Only show the requested user's readings
+        } else {
+          return NextResponse.json({ error: 'Not authorized to view this user\'s readings' }, { status: 403 });
+        }
+      } else {
+        // Get all connected users
+        const { data: connections, error: connectionsError } = await supabase
+          .from('user_connections')
+          .select('user_id')
+          .eq('caregiver_id', userData.id)
+          .filter('permissions->can_view', 'eq', true);
+          
+        if (connectionsError) {
+          console.error('Error fetching connections:', connectionsError);
+        } else if (connections && connections.length > 0) {
+          // Add connected user IDs to the list
+          const connectedUserIds = connections.map(conn => conn.user_id);
+          userIds = [...userIds, ...connectedUserIds];
+        }
+      }
+    }
+    
+    // Then get the glucose readings for all applicable user IDs
     const { data, error } = await supabase
       .from('glucose_readings')
-      .select('*')
-      .eq('user_id', userData.id)
+      .select('*, users!inner(name)')
+      .in('user_id', userIds)
       .order('timestamp', { ascending: false });
     
     if (error) {
@@ -47,6 +94,7 @@ export async function GET(_request: NextRequest) {
     const readings = data.map(reading => ({
       id: reading.id,
       userId: reading.user_id,
+      userName: reading.users?.name || null,
       value: reading.value,
       timestamp: reading.timestamp,
       mealContext: reading.meal_context as MealContext,
