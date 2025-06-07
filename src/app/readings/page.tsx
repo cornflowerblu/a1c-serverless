@@ -41,7 +41,7 @@ export default function ReadingsPage() {
         
         const data = await response.json();
         // Convert string timestamps to Date objects
-        const formattedReadings = (data.readings || []).map((reading: any) => ({
+        const formattedReadings = (data.readings || []).map((reading: GlucoseReading) => ({
           ...reading,
           timestamp: new Date(reading.timestamp)
         }));
@@ -71,18 +71,21 @@ export default function ReadingsPage() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
+    // Calculate date ranges outside switch to avoid lexical declaration errors
+    const week = new Date(today);
+    week.setDate(week.getDate() - 7);
+    
+    const month = new Date(today);
+    month.setDate(month.getDate() - 30);
+
     switch (range) {
       case "today":
         return date >= today;
       case "yesterday":
         return date >= yesterday && date < today;
       case "last7days":
-        const week = new Date(today);
-        week.setDate(week.getDate() - 7);
         return date >= week;
       case "last30days":
-        const month = new Date(today);
-        month.setDate(month.getDate() - 30);
         return date >= month;
       case "all":
       default:
@@ -305,7 +308,7 @@ export default function ReadingsPage() {
           {/* Readings Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredReadings.map((reading) => (
-              <GlucoseReadingCard key={reading.id} reading={reading} />
+              <GlucoseReadingCard key={reading.id} reading={reading as never} />
             ))}
           </div>
 
