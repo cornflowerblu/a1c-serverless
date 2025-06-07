@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -10,13 +10,23 @@ import { Plus } from "lucide-react";
 
 interface CreateRunFormProps {
   onSubmit: (data: { name: string; startDate: string; endDate: string }) => Promise<void>;
-  isSubmitting: boolean;
+  isSubmitting: boolean; 
+  defaultOpen?: boolean;
 }
 
-export function CreateRunForm({ onSubmit, isSubmitting }: CreateRunFormProps) {
+export function CreateRunForm({ onSubmit, isSubmitting, defaultOpen = false }: CreateRunFormProps) {
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    // If defaultOpen is true, programmatically click the trigger
+    if (defaultOpen && triggerRef.current) {
+      triggerRef.current.click();
+    }
+  }, [defaultOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +36,9 @@ export function CreateRunForm({ onSubmit, isSubmitting }: CreateRunFormProps) {
 
   return (
     <Card className="mb-8 border-blue-200 shadow-md">
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion type="single" collapsible className="w-full" value={isOpen ? "create-run" : undefined} onValueChange={(value) => setIsOpen(!!value)}>
         <AccordionItem value="create-run" className="border-0">
-          <AccordionTrigger className="px-6 py-4 hover:no-underline bg-blue-50 text-blue-700 rounded-t-xl">
+          <AccordionTrigger ref={triggerRef} className="px-6 py-4 hover:no-underline bg-blue-50 text-blue-700 rounded-t-xl">
             <div className="flex items-center gap-2">
               <Plus className="w-5 h-5" />
               <span className="font-medium">Create New Run</span>

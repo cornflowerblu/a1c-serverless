@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -18,6 +17,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { glucoseReadingSchema, type GlucoseReadingInput } from "@/utils/schemas/glucose-schema";
 import type { MealContext } from "@/types/glucose";
+import { useRouter } from "next/navigation";
 
 // Helper function to format date for datetime-local input
 function formatDateTimeLocal(date: Date): string {
@@ -113,7 +113,7 @@ export function AddReadingDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button id="add-reading-trigger" className="bg-blue-600 hover:bg-blue-700 text-white">
           Add Reading
         </Button>
       </DialogTrigger>
