@@ -78,7 +78,14 @@ export default function ReadingsPage() {
   return (
     <div className="max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Glucose Readings</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Glucose Readings</h1>
+          {hasMultipleUsers ? (
+            <p className="text-gray-600 text-sm mt-1">Viewing readings for multiple users</p>
+          ) : readings.length > 0 && readings[0].userName ? (
+            <p className="text-gray-600 text-sm mt-1">Viewing readings for {readings[0].userName}</p>
+          ) : null}
+        </div>
         <Link 
           href="/readings/add" 
           className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
@@ -114,7 +121,7 @@ export default function ReadingsPage() {
         <div>
           {Object.entries(readingsByUser).map(([userId, { userName, readings: userReadings }]) => (
             <div key={userId} className="mb-8">
-              <h2 className="text-xl font-semibold mb-3 pb-2 border-b">{userName}'s Readings</h2>
+              <h2 className="text-xl font-semibold mb-3 pb-2 border-b">{userName}&apos;s Readings</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white border border-gray-200">
                   <thead>

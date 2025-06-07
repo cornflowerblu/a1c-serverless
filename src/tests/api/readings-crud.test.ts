@@ -89,7 +89,7 @@ describe('Glucose Readings API Endpoints', () => {
       const response = await GET(mockRequest);
       
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
-      expect(mockSupabase.select).toHaveBeenCalledWith('id, role');
+      expect(mockSupabase.select).toHaveBeenCalledWith('id, user_role');
       expect(mockSupabase.eq).toHaveBeenCalledWith('clerk_id', 'clerk_user_123');
       expect(NextResponse.json).toHaveBeenCalledWith(
         { error: 'User not found' },
@@ -145,7 +145,7 @@ describe('Glucose Readings API Endpoints', () => {
           {
             id: 'reading_1',
             userId: 'db_user_123',
-            userName: null,
+            userName: undefined,
             value: 120,
             timestamp: '2023-05-01T12:00:00Z',
             mealContext: 'FASTING',
@@ -157,7 +157,7 @@ describe('Glucose Readings API Endpoints', () => {
           {
             id: 'reading_2',
             userId: 'db_user_123',
-            userName: null,
+            userName: undefined,
             value: 140,
             timestamp: '2023-05-01T18:00:00Z',
             mealContext: 'AFTER_DINNER',
