@@ -62,14 +62,15 @@ This document outlines the implementation plan for the A1C Estimator application
 
 3. **Runs Management**
 
-   - Implement run data model
-   - Create API endpoints for CRUD operations
-   - Develop UI for creating and managing runs
-   - Implement run date range selection
+   - ✅ Implement run data model
+   - ✅ Create API endpoints for CRUD operations
+   - ✅ Develop UI for creating and managing runs
+   - ✅ Implement run date range selection
+   - ✅ Crazy UI upgrades
 
 4. **Months Management**
-   - Implement month data model
-   - Create API endpoints for CRUD operations
+   - ✅ Implement month data model
+   - ✅ Create API endpoints for CRUD operations
    - Develop UI for creating and managing months
    - Implement month aggregation logic
 

@@ -10,13 +10,27 @@ import { createMonth } from '@/utils/month-management';
  */
 export async function GET(_request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const supabase = createServerSupabaseClient();
+    
+    // First get the internal user ID from clerk_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    const userId = userData.id;
     
     const { data, error } = await supabase
       .from('months')
@@ -55,11 +69,27 @@ export async function GET(_request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    const supabasePost = createServerSupabaseClient();
+    
+    // First get the internal user ID from clerk_id
+    const { data: userData, error: userError } = await supabasePost
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    const userId = userData.id;
     
     const body = await request.json();
     const { name, startDate, endDate } = body;
@@ -127,11 +157,27 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    const supabasePut = createServerSupabaseClient();
+    
+    // First get the internal user ID from clerk_id
+    const { data: userData, error: userError } = await supabasePut
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    const userId = userData.id;
     
     const monthId = params.id;
     const body = await request.json();
@@ -227,17 +273,32 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
  */
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    const supabaseDelete = createServerSupabaseClient();
+    
+    // First get the internal user ID from clerk_id
+    const { data: userData, error: userError } = await supabaseDelete
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    const userId = userData.id;
+    
     const monthId = params.id;
-    const supabase = createServerSupabaseClient();
     
     // Check if month exists and belongs to user
-    const { data: existingMonth, error: fetchError } = await supabase
+    const { data: existingMonth, error: fetchError } = await supabaseDelete
       .from('months')
       .select('*')
       .eq('id', monthId)
@@ -249,7 +310,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
     
     // Delete month
-    const { error } = await supabase
+    const { error } = await supabaseDelete
       .from('months')
       .delete()
       .eq('id', monthId);

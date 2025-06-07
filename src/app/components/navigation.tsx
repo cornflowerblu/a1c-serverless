@@ -44,6 +44,16 @@ export function Navigation() {
         >
           Runs
         </Link>
+        <Link 
+          href="/months" 
+          className={`px-3 py-2 rounded-md text-sm font-medium ${
+            isActive('/months') 
+              ? 'bg-gray-900 text-white' 
+              : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+          }`}
+        >
+          Months
+        </Link>
       </nav>
     </SignedIn>
   );

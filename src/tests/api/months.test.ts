@@ -1,361 +1,241 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { GET, POST } from '../../app/api/months/route';
+import { auth } from '@clerk/nextjs/server';
+import { createServerSupabaseClient } from '../../app/lib/client';
 
-// Mock the Next.js Response
-vi.mock('next/server', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    NextResponse: {
-      json: vi.fn((data, options) => ({
-        status: options?.status || 200,
-        json: async () => data
-      }))
-    }
-  };
-});
-
-// Mock the database client
-vi.mock('../../supabase/client', () => ({
-  createClient: vi.fn(() => ({
-    from: vi.fn((_table) => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => ({
-            data: [
-              { 
-                id: 'month1', 
-                user_id: 'user123', 
-                name: 'January 2025',
-                start_date: '2025-01-01T00:00:00Z',
-                end_date: '2025-01-31T23:59:59Z',
-                calculated_a1c: 5.7,
-                average_glucose: 126,
-                run_ids: ['run1', 'run2'],
-                created_at: '2025-01-01T00:00:00Z',
-                updated_at: '2025-01-01T00:00:00Z'
-              },
-              { 
-                id: 'month2', 
-                user_id: 'user123', 
-                name: 'February 2025',
-                start_date: '2025-02-01T00:00:00Z',
-                end_date: '2025-02-28T23:59:59Z',
-                calculated_a1c: null,
-                average_glucose: null,
-                run_ids: [],
-                created_at: '2025-01-15T00:00:00Z',
-                updated_at: '2025-01-15T00:00:00Z'
-              }
-            ],
-            error: null
-          }))
-        }))
-      })),
-      insert: vi.fn(() => ({
-        select: vi.fn(() => ({
-          single: vi.fn(() => ({
-            data: { 
-              id: 'month3', 
-              user_id: 'user123', 
-              name: 'March 2025',
-              start_date: '2025-03-01T00:00:00Z',
-              end_date: '2025-03-31T23:59:59Z',
-              calculated_a1c: null,
-              average_glucose: null,
-              run_ids: [],
-              created_at: '2025-02-15T00:00:00Z',
-              updated_at: '2025-02-15T00:00:00Z'
-            },
-            error: null
-          }))
-        }))
-      })),
-      update: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn(() => ({
-              data: { 
-                id: 'month1', 
-                user_id: 'user123', 
-                name: 'January 2025 (Updated)',
-                start_date: '2025-01-01T00:00:00Z',
-                end_date: '2025-01-31T23:59:59Z',
-                calculated_a1c: 5.7,
-                average_glucose: 126,
-                run_ids: ['run1', 'run2'],
-                created_at: '2025-01-01T00:00:00Z',
-                updated_at: '2025-02-15T00:00:00Z'
-              },
-              error: null
-            }))
-          }))
-        }))
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          then: vi.fn((callback) => callback({ error: null }))
-        }))
-      }))
-    }))
-  }))
+// Mock dependencies
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn()
 }));
 
-// Mock the auth
-vi.mock('@clerk/nextjs', () => ({
-  auth: vi.fn(() => ({
-    userId: 'user123'
-  })),
-  clerkClient: {
-    users: {
-      getUser: vi.fn(() => ({
-        id: 'user123',
-        emailAddresses: [{ emailAddress: 'test@example.com' }]
-      }))
-    }
-  }
-}));
-
-// Import the route handlers after mocking
-const { GET, POST, PUT, DELETE } = vi.hoisted(() => ({
-  GET: vi.fn(() => ({
-    status: 200,
-    json: async () => ({ months: [
-      { 
-        id: 'month1', 
-        userId: 'user123', 
-        name: 'January 2025',
-        startDate: '2025-01-01T00:00:00Z',
-        endDate: '2025-01-31T23:59:59Z',
-        calculatedA1C: 5.7,
-        averageGlucose: 126,
-        runIds: ['run1', 'run2'],
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z'
-      },
-      { 
-        id: 'month2', 
-        userId: 'user123', 
-        name: 'February 2025',
-        startDate: '2025-02-01T00:00:00Z',
-        endDate: '2025-02-28T23:59:59Z',
-        calculatedA1C: null,
-        averageGlucose: null,
-        runIds: [],
-        createdAt: '2025-01-15T00:00:00Z',
-        updatedAt: '2025-01-15T00:00:00Z'
-      }
-    ]})
-  })),
-  POST: vi.fn(() => ({
-    status: 201,
-    json: async () => ({ month: { 
-      id: 'month3', 
-      userId: 'user123', 
-      name: 'March 2025',
-      startDate: '2025-03-01T00:00:00Z',
-      endDate: '2025-03-31T23:59:59Z',
-      calculatedA1C: null,
-      averageGlucose: null,
-      runIds: [],
-      createdAt: '2025-02-15T00:00:00Z',
-      updatedAt: '2025-02-15T00:00:00Z'
-    }})
-  })),
-  PUT: vi.fn(() => ({
-    status: 200,
-    json: async () => ({ month: { 
-      id: 'month1', 
-      userId: 'user123', 
-      name: 'January 2025 (Updated)',
-      startDate: '2025-01-01T00:00:00Z',
-      endDate: '2025-01-31T23:59:59Z',
-      calculatedA1C: 5.7,
-      averageGlucose: 126,
-      runIds: ['run1', 'run2'],
-      createdAt: '2025-01-01T00:00:00Z',
-      updatedAt: '2025-02-15T00:00:00Z'
-    }})
-  })),
-  DELETE: vi.fn(() => ({
-    status: 204,
-    json: async () => ({})
-  }))
-}));
-
-// Mock the actual route import
-vi.mock('../../app/api/months/route', () => ({
-  GET,
-  POST,
-  PUT,
-  DELETE
-}));
-
-// Mock the route with ID parameter
-vi.mock('../../app/api/months/[id]/route', () => ({
-  GET: vi.fn((request, { params }) => ({
-    status: 200,
-    json: async () => ({ month: { 
-      id: params.id, 
-      userId: 'user123', 
-      name: 'January 2025',
-      startDate: '2025-01-01T00:00:00Z',
-      endDate: '2025-01-31T23:59:59Z',
-      calculatedA1C: 5.7,
-      averageGlucose: 126,
-      runIds: ['run1', 'run2'],
-      createdAt: '2025-01-01T00:00:00Z',
-      updatedAt: '2025-01-01T00:00:00Z'
-    }})
-  })),
-  PUT,
-  DELETE
+vi.mock('../../app/lib/client', () => ({
+  createServerSupabaseClient: vi.fn()
 }));
 
 describe('Months API', () => {
-  let mockRequest: NextRequest;
+  const mockClerkId = 'clerk123';
+  const mockUserId = 'user123';
+  const mockSupabase = {
+    from: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    delete: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    single: vi.fn().mockReturnThis()
+  };
   
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRequest = new NextRequest('http://localhost:3000/api/months', {
-      method: 'GET'
-    });
+    (auth as any).mockResolvedValue({ userId: mockClerkId });
+    (createServerSupabaseClient as any).mockReturnValue(mockSupabase);
   });
   
   describe('GET /api/months', () => {
-    it('should return all months for the authenticated user', async () => {
-      const response = await GET(mockRequest);
+    it('should return 401 if user is not authenticated', async () => {
+      (auth as any).mockResolvedValue({ userId: null });
+      
+      const response = await GET(new NextRequest(new URL('http://localhost/api/months')));
       const data = await response.json();
       
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Unauthorized');
+    });
+    
+    it('should return months for authenticated user', async () => {
+      // Mock user lookup
+      mockSupabase.single.mockResolvedValueOnce({ 
+        data: { id: mockUserId }, 
+        error: null 
+      });
+      
+      const mockMonths = [
+        {
+          id: 'month1',
+          user_id: mockUserId,
+          name: 'January 2023',
+          start_date: '2023-01-01',
+          end_date: '2023-01-31',
+          calculated_a1c: 6.5,
+          average_glucose: 140,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z'
+        }
+      ];
+      
+      mockSupabase.order.mockResolvedValueOnce({ data: mockMonths, error: null });
+      
+      const response = await GET(new NextRequest(new URL('http://localhost/api/months')));
+      const data = await response.json();
+      
+      // First call should be to users table
+      expect(mockSupabase.from.mock.calls[0][0]).toBe('users');
+      
+      // Second call should be to months table
+      expect(mockSupabase.from.mock.calls[1][0]).toBe('months');
+      expect(mockSupabase.eq).toHaveBeenCalledWith('user_id', mockUserId);
+      
       expect(response.status).toBe(200);
-      expect(data.months).toHaveLength(2);
-      expect(data.months[0].name).toBe('January 2025');
-      expect(data.months[1].name).toBe('February 2025');
+      expect(data.months).toHaveLength(1);
+      expect(data.months[0]).toEqual(expect.objectContaining({
+        id: 'month1',
+        userId: mockUserId,
+        name: 'January 2023',
+        startDate: '2023-01-01',
+        endDate: '2023-01-31',
+        calculatedA1C: 6.5,
+        averageGlucose: 140
+      }));
     });
     
     it('should handle database errors', async () => {
-      // Override the mock for this test
-      GET.mockImplementationOnce(() => ({
-        status: 500,
-        json: async () => ({ error: 'Failed to fetch months' })
-      }));
+      // Mock user lookup
+      mockSupabase.single.mockResolvedValueOnce({ 
+        data: { id: mockUserId }, 
+        error: null 
+      });
       
-      const response = await GET(mockRequest);
+      mockSupabase.order.mockResolvedValueOnce({ data: null, error: new Error('Database error') });
+      
+      const response = await GET(new NextRequest(new URL('http://localhost/api/months')));
+      const data = await response.json();
       
       expect(response.status).toBe(500);
-      const data = await response.json();
       expect(data.error).toBe('Failed to fetch months');
     });
   });
   
   describe('POST /api/months', () => {
-    it('should create a new month', async () => {
-      const mockPostRequest = new NextRequest('http://localhost:3000/api/months', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'March 2025',
-          startDate: '2025-03-01T00:00:00Z',
-          endDate: '2025-03-31T23:59:59Z'
-        })
+    it('should return 401 if user is not authenticated', async () => {
+      (auth as any).mockResolvedValue({ userId: null });
+      
+      const request = new NextRequest(
+        new URL('http://localhost/api/months'),
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'January 2023',
+            startDate: '2023-01-01',
+            endDate: '2023-01-31'
+          })
+        }
+      );
+      
+      const response = await POST(request);
+      const data = await response.json();
+      
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Unauthorized');
+    });
+    
+    it('should create a new month for authenticated user', async () => {
+      // Mock user lookup
+      mockSupabase.single.mockResolvedValueOnce({ 
+        data: { id: mockUserId }, 
+        error: null 
       });
       
-      const response = await POST(mockPostRequest);
+      const mockMonth = {
+        id: 'month1',
+        user_id: mockUserId,
+        name: 'January 2023',
+        start_date: '2023-01-01',
+        end_date: '2023-01-31',
+        calculated_a1c: null,
+        average_glucose: null,
+        run_ids: [],
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z'
+      };
+      
+      mockSupabase.single.mockResolvedValueOnce({ data: mockMonth, error: null });
+      
+      const request = new NextRequest(
+        new URL('http://localhost/api/months'),
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'January 2023',
+            startDate: '2023-01-01',
+            endDate: '2023-01-31'
+          })
+        }
+      );
+      
+      const response = await POST(request);
       const data = await response.json();
+      
+      // First call should be to users table
+      expect(mockSupabase.from.mock.calls[0][0]).toBe('users');
+      
+      // Second call should be to months table
+      expect(mockSupabase.from.mock.calls[1][0]).toBe('months');
+      expect(mockSupabase.insert).toHaveBeenCalled();
       
       expect(response.status).toBe(201);
-      expect(data.month.name).toBe('March 2025');
-      expect(data.month.startDate).toBe('2025-03-01T00:00:00Z');
+      expect(data.month).toEqual(expect.objectContaining({
+        id: 'month1',
+        userId: mockUserId,
+        name: 'January 2023',
+        startDate: '2023-01-01',
+        endDate: '2023-01-31'
+      }));
     });
     
-    it('should handle invalid date ranges', async () => {
-      // Override the POST mock for this test
-      POST.mockImplementationOnce(() => ({
-        status: 400,
-        json: async () => ({ error: 'End date cannot be before start date' })
-      }));
-      
-      const mockPostRequest = new NextRequest('http://localhost:3000/api/months', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'Invalid Month',
-          startDate: '2025-03-31T00:00:00Z', // End before start
-          endDate: '2025-03-01T23:59:59Z'
-        })
+    it('should validate date range', async () => {
+      // Mock user lookup
+      mockSupabase.single.mockResolvedValueOnce({ 
+        data: { id: mockUserId }, 
+        error: null 
       });
       
-      const response = await POST(mockPostRequest);
+      const request = new NextRequest(
+        new URL('http://localhost/api/months'),
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Invalid Month',
+            startDate: '2023-01-31',
+            endDate: '2023-01-01' // End date before start date
+          })
+        }
+      );
+      
+      const response = await POST(request);
+      const data = await response.json();
       
       expect(response.status).toBe(400);
-      const data = await response.json();
       expect(data.error).toBe('End date cannot be before start date');
     });
-  });
-  
-  describe('PUT /api/months/:id', () => {
-    it('should update an existing month', async () => {
-      const mockPutRequest = new NextRequest('http://localhost:3000/api/months/month1', {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: 'January 2025 (Updated)'
-        })
-      });
-      
-      const response = await PUT(mockPutRequest, { params: { id: 'month1' } });
-      const data = await response.json();
-      
-      expect(response.status).toBe(200);
-      expect(data.month.name).toBe('January 2025 (Updated)');
-    });
     
-    it('should handle not found errors', async () => {
-      // Override the PUT mock for this test
-      PUT.mockImplementationOnce(() => ({
-        status: 404,
-        json: async () => ({ error: 'Month not found' })
-      }));
-      
-      const mockPutRequest = new NextRequest('http://localhost:3000/api/months/nonexistent', {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: 'Updated Name'
-        })
+    it('should handle database errors during creation', async () => {
+      // Mock user lookup
+      mockSupabase.single.mockResolvedValueOnce({ 
+        data: { id: mockUserId }, 
+        error: null 
       });
       
-      const response = await PUT(mockPutRequest, { params: { id: 'nonexistent' } });
+      mockSupabase.single.mockResolvedValueOnce({ data: null, error: new Error('Database error') });
       
-      expect(response.status).toBe(404);
+      const request = new NextRequest(
+        new URL('http://localhost/api/months'),
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'January 2023',
+            startDate: '2023-01-01',
+            endDate: '2023-01-31'
+          })
+        }
+      );
+      
+      const response = await POST(request);
       const data = await response.json();
-      expect(data.error).toBe('Month not found');
-    });
-  });
-  
-  describe('DELETE /api/months/:id', () => {
-    it('should delete a month', async () => {
-      const mockDeleteRequest = new NextRequest('http://localhost:3000/api/months/month1', {
-        method: 'DELETE'
-      });
       
-      const response = await DELETE(mockDeleteRequest, { params: { id: 'month1' } });
-      
-      expect(response.status).toBe(204);
-    });
-    
-    it('should handle not found errors', async () => {
-      // Override the DELETE mock for this test
-      DELETE.mockImplementationOnce(() => ({
-        status: 404,
-        json: async () => ({ error: 'Month not found' })
-      }));
-      
-      const mockDeleteRequest = new NextRequest('http://localhost:3000/api/months/nonexistent', {
-        method: 'DELETE'
-      });
-      
-      const response = await DELETE(mockDeleteRequest, { params: { id: 'nonexistent' } });
-      
-      expect(response.status).toBe(404);
-      const data = await response.json();
-      expect(data.error).toBe('Month not found');
+      expect(response.status).toBe(500);
+      expect(data.error).toBe('Failed to create month');
     });
   });
 });

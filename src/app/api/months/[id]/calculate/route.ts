@@ -14,11 +14,27 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    const supabase = createServerSupabaseClient();
+    
+    // First get the internal user ID from clerk_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    const userId = userData.id;
     
     const monthId = params.id;
     const supabase = createServerSupabaseClient();
@@ -47,7 +63,7 @@ export async function PUT(
       averageGlucose: monthData.average_glucose,
       createdAt: new Date(monthData.created_at as string),
       updatedAt: new Date(monthData.updated_at as string),
-      runIds: []
+      runIds: monthData.run_ids || []
     };
     
     // Get runs for this month
@@ -109,7 +125,7 @@ export async function PUT(
       endDate: updatedData.end_date,
       calculatedA1C: updatedData.calculated_a1c,
       averageGlucose: updatedData.average_glucose,
-      runIds: [],
+      runIds: updatedData.run_ids || [],
       createdAt: updatedData.created_at,
       updatedAt: updatedData.updated_at
     };

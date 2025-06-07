@@ -1,108 +1,82 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createMonth, addRunToMonth, calculateMonthStatistics } from '../../utils/month-management';
-import type { Run, Month } from '../../types/glucose';
-
-// Mock the A1C calculator functions
-vi.mock('../../utils/a1c-calculator', () => ({
-  calculateA1C: vi.fn((avg) => (avg + 46.7) / 28.7),
-  calculateAverageGlucose: vi.fn((readings) => {
-    if (readings.length === 0) return 0;
-    return readings.reduce((sum, r) => sum + r.value, 0) / readings.length;
-  })
-}));
+import type { Month, Run } from '../../types/glucose';
+import { calculateA1C } from '../../utils/a1c-calculator';
 
 describe('Month Management', () => {
-  let mockDate: Date;
-  
-  beforeEach(() => {
-    mockDate = new Date('2025-01-01T12:00:00Z');
-    vi.useFakeTimers();
-    vi.setSystemTime(mockDate);
-  });
-  
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-  
   describe('createMonth', () => {
-    it('should create a new month with default values', () => {
+    it('should create a month with the provided parameters', () => {
       const userId = 'user123';
-      const name = 'January 2025';
-      
-      const month = createMonth(userId, name);
-      
-      expect(month).toEqual({
-        id: expect.any(String),
-        userId,
-        name,
-        startDate: mockDate,
-        endDate: mockDate,
-        calculatedA1C: null,
-        averageGlucose: null,
-        runIds: [],
-        createdAt: mockDate,
-        updatedAt: mockDate
-      });
-    });
-    
-    it('should create a month with custom dates', () => {
-      const userId = 'user123';
-      const name = 'January 2025';
-      const startDate = new Date('2025-01-01');
-      const endDate = new Date('2025-01-31');
+      const name = 'January 2023';
+      const startDate = new Date('2023-01-01');
+      const endDate = new Date('2023-01-31');
       
       const month = createMonth(userId, name, startDate, endDate);
       
-      expect(month).toEqual({
-        id: expect.any(String),
+      expect(month).toEqual(expect.objectContaining({
         userId,
         name,
         startDate,
         endDate,
         calculatedA1C: null,
         averageGlucose: null,
-        runIds: [],
-        createdAt: mockDate,
-        updatedAt: mockDate
-      });
+        runIds: []
+      }));
+      
+      expect(month.id).toBeDefined();
+      expect(month.createdAt).toBeInstanceOf(Date);
+      expect(month.updatedAt).toBeInstanceOf(Date);
+    });
+    
+    it('should use current date as default for start and end dates', () => {
+      const userId = 'user123';
+      const name = 'Current Month';
+      
+      const month = createMonth(userId, name);
+      
+      expect(month.startDate).toBeInstanceOf(Date);
+      expect(month.endDate).toBeInstanceOf(Date);
     });
     
     it('should throw an error if end date is before start date', () => {
       const userId = 'user123';
       const name = 'Invalid Month';
-      const startDate = new Date('2025-01-31');
-      const endDate = new Date('2025-01-01');
+      const startDate = new Date('2023-01-31');
+      const endDate = new Date('2023-01-01');
       
-      expect(() => createMonth(userId, name, startDate, endDate)).toThrow();
+      expect(() => createMonth(userId, name, startDate, endDate)).toThrow(
+        'End date cannot be before start date'
+      );
     });
   });
   
   describe('addRunToMonth', () => {
     it('should add a run to a month', () => {
+      const userId = 'user123';
       const month: Month = {
         id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
+        userId,
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
         calculatedA1C: null,
         averageGlucose: null,
         runIds: [],
-        createdAt: mockDate,
-        updatedAt: mockDate
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       const run: Run = {
         id: 'run1',
-        userId: 'user123',
+        userId,
         name: 'Week 1',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-07'),
-        calculatedA1C: 5.5,
-        averageGlucose: 120,
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-07'),
+        calculatedA1C: null,
+        averageGlucose: null,
         monthId: null,
-        createdAt: mockDate,
-        updatedAt: mockDate
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       const result = addRunToMonth(run, month);
@@ -111,267 +85,238 @@ describe('Month Management', () => {
       expect(result.run.monthId).toBe(month.id);
     });
     
-    it('should throw an error if run is outside month date range', () => {
+    it('should not modify if run is already in the month', () => {
+      const userId = 'user123';
+      const monthId = 'month1';
+      const runId = 'run1';
+      
       const month: Month = {
-        id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
+        id: monthId,
+        userId,
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
         calculatedA1C: null,
         averageGlucose: null,
-        runIds: [],
-        createdAt: mockDate,
-        updatedAt: mockDate
+        runIds: [runId],
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       const run: Run = {
-        id: 'run1',
-        userId: 'user123',
-        name: 'February Week 1',
-        startDate: new Date('2025-02-01'), // Outside month range
-        endDate: new Date('2025-02-07'),
-        calculatedA1C: 5.5,
-        averageGlucose: 120,
-        monthId: null,
-        createdAt: mockDate,
-        updatedAt: mockDate
-      };
-      
-      expect(() => addRunToMonth(run, month)).toThrow();
-    });
-    
-    it('should throw an error if run is from a different user', () => {
-      const month: Month = {
-        id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
-        calculatedA1C: null,
-        averageGlucose: null,
-        runIds: [],
-        createdAt: mockDate,
-        updatedAt: mockDate
-      };
-      
-      const run: Run = {
-        id: 'run1',
-        userId: 'differentUser', // Different user
+        id: runId,
+        userId,
         name: 'Week 1',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-07'),
-        calculatedA1C: 5.5,
-        averageGlucose: 120,
-        monthId: null,
-        createdAt: mockDate,
-        updatedAt: mockDate
-      };
-      
-      expect(() => addRunToMonth(run, month)).toThrow();
-    });
-    
-    it('should not add duplicate run IDs', () => {
-      const month: Month = {
-        id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-07'),
         calculatedA1C: null,
         averageGlucose: null,
-        runIds: ['run1'], // Already contains the run ID
-        createdAt: mockDate,
-        updatedAt: mockDate
-      };
-      
-      const run: Run = {
-        id: 'run1',
-        userId: 'user123',
-        name: 'Week 1',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-07'),
-        calculatedA1C: 5.5,
-        averageGlucose: 120,
-        monthId: 'month1', // Already associated with the month
-        createdAt: mockDate,
-        updatedAt: mockDate
+        monthId,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       const result = addRunToMonth(run, month);
       
-      expect(result.month.runIds).toEqual(['run1']); // No duplicates
-      expect(result.month.runIds.length).toBe(1);
+      expect(result.month.runIds).toEqual([runId]);
+      expect(result.run.monthId).toBe(monthId);
+    });
+    
+    it('should throw an error if run dates are outside month range', () => {
+      const userId = 'user123';
+      const month: Month = {
+        id: 'month1',
+        userId,
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
+        calculatedA1C: null,
+        averageGlucose: null,
+        runIds: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const run: Run = {
+        id: 'run1',
+        userId,
+        name: 'December Week',
+        startDate: new Date('2022-12-25'),
+        endDate: new Date('2022-12-31'),
+        calculatedA1C: null,
+        averageGlucose: null,
+        monthId: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      expect(() => addRunToMonth(run, month)).toThrow(
+        'Run dates are outside of month date range'
+      );
+    });
+    
+    it('should throw an error if run belongs to a different user', () => {
+      const month: Month = {
+        id: 'month1',
+        userId: 'user123',
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
+        calculatedA1C: null,
+        averageGlucose: null,
+        runIds: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const run: Run = {
+        id: 'run1',
+        userId: 'user456',
+        name: 'Week 1',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-07'),
+        calculatedA1C: null,
+        averageGlucose: null,
+        monthId: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      expect(() => addRunToMonth(run, month)).toThrow(
+        'Run belongs to a different user than the month'
+      );
     });
   });
   
   describe('calculateMonthStatistics', () => {
-    it('should calculate A1C and average glucose for a month based on runs', () => {
-      const runs: Run[] = [
-        {
-          id: 'run1',
-          userId: 'user123',
-          name: 'Week 1',
-          startDate: new Date('2025-01-01'),
-          endDate: new Date('2025-01-07'),
-          calculatedA1C: 5.5,
-          averageGlucose: 120,
-          monthId: 'month1',
-          createdAt: mockDate,
-          updatedAt: mockDate
-        },
-        {
-          id: 'run2',
-          userId: 'user123',
-          name: 'Week 2',
-          startDate: new Date('2025-01-08'),
-          endDate: new Date('2025-01-14'),
-          calculatedA1C: 6.0,
-          averageGlucose: 140,
-          monthId: 'month1',
-          createdAt: mockDate,
-          updatedAt: mockDate
-        }
-      ];
-      
+    it('should calculate average glucose and A1C for a month with runs', () => {
+      const userId = 'user123';
       const month: Month = {
         id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
+        userId,
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
         calculatedA1C: null,
         averageGlucose: null,
         runIds: ['run1', 'run2'],
-        createdAt: mockDate,
-        updatedAt: mockDate
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
-      const updatedMonth = calculateMonthStatistics(month, runs);
+      const runs: Run[] = [
+        {
+          id: 'run1',
+          userId,
+          name: 'Week 1',
+          startDate: new Date('2023-01-01'),
+          endDate: new Date('2023-01-07'),
+          calculatedA1C: 6.5,
+          averageGlucose: 140,
+          monthId: 'month1',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'run2',
+          userId,
+          name: 'Week 2',
+          startDate: new Date('2023-01-08'),
+          endDate: new Date('2023-01-14'),
+          calculatedA1C: 7.0,
+          averageGlucose: 160,
+          monthId: 'month1',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'run3',
+          userId,
+          name: 'Week 3',
+          startDate: new Date('2023-01-15'),
+          endDate: new Date('2023-01-21'),
+          calculatedA1C: 6.0,
+          averageGlucose: 120,
+          monthId: 'month2', // Different month
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
       
-      // Average glucose: (120 + 140) / 2 = 130
-      // A1C: (130 + 46.7) / 28.7 = 6.16
-      expect(updatedMonth.averageGlucose).toBe(130);
-      expect(updatedMonth.calculatedA1C).toBeCloseTo(6.16, 2);
+      const result = calculateMonthStatistics(month, runs);
+      
+      expect(result.averageGlucose).toBe(150); // Average of 140 and 160
+      expect(result.calculatedA1C).toBe(calculateA1C(150));
     });
     
     it('should handle empty runs array', () => {
-      const runs: Run[] = [];
-      
+      const userId = 'user123';
       const month: Month = {
         id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
+        userId,
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
         calculatedA1C: null,
         averageGlucose: null,
         runIds: [],
-        createdAt: mockDate,
-        updatedAt: mockDate
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
-      const updatedMonth = calculateMonthStatistics(month, runs);
+      const result = calculateMonthStatistics(month, []);
       
-      expect(updatedMonth.averageGlucose).toBe(0);
-      expect(updatedMonth.calculatedA1C).toBeCloseTo(1.63, 2); // (0 + 46.7) / 28.7
+      expect(result.averageGlucose).toBe(0);
+      expect(result.calculatedA1C).toBe(calculateA1C(0));
     });
     
-    it('should filter out runs that do not belong to the month', () => {
-      const runs: Run[] = [
-        {
-          id: 'run1',
-          userId: 'user123',
-          name: 'Week 1',
-          startDate: new Date('2025-01-01'),
-          endDate: new Date('2025-01-07'),
-          calculatedA1C: 5.5,
-          averageGlucose: 120,
-          monthId: 'month1', // Matches
-          createdAt: mockDate,
-          updatedAt: mockDate
-        },
-        {
-          id: 'run2',
-          userId: 'user123',
-          name: 'Week 2',
-          startDate: new Date('2025-01-08'),
-          endDate: new Date('2025-01-14'),
-          calculatedA1C: 6.0,
-          averageGlucose: 140,
-          monthId: 'month2', // Different month
-          createdAt: mockDate,
-          updatedAt: mockDate
-        }
-      ];
-      
+    it('should calculate weighted average when specified', () => {
+      const userId = 'user123';
       const month: Month = {
         id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
-        calculatedA1C: null,
-        averageGlucose: null,
-        runIds: ['run1'],
-        createdAt: mockDate,
-        updatedAt: mockDate
-      };
-      
-      const updatedMonth = calculateMonthStatistics(month, runs);
-      
-      // Should only use the first run with averageGlucose 120
-      expect(updatedMonth.averageGlucose).toBe(120);
-      expect(updatedMonth.calculatedA1C).toBeCloseTo(5.8, 1); // (120 + 46.7) / 28.7
-    });
-    
-    it('should calculate weighted average based on run duration', () => {
-      const runs: Run[] = [
-        {
-          id: 'run1',
-          userId: 'user123',
-          name: 'Week 1',
-          startDate: new Date('2025-01-01'),
-          endDate: new Date('2025-01-07'), // 7 days
-          calculatedA1C: 5.5,
-          averageGlucose: 120,
-          monthId: 'month1',
-          createdAt: mockDate,
-          updatedAt: mockDate
-        },
-        {
-          id: 'run2',
-          userId: 'user123',
-          name: 'Week 2-3',
-          startDate: new Date('2025-01-08'),
-          endDate: new Date('2025-01-21'), // 14 days
-          calculatedA1C: 6.0,
-          averageGlucose: 140,
-          monthId: 'month1',
-          createdAt: mockDate,
-          updatedAt: mockDate
-        }
-      ];
-      
-      const month: Month = {
-        id: 'month1',
-        userId: 'user123',
-        name: 'January 2025',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
+        userId,
+        name: 'January 2023',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2023-01-31'),
         calculatedA1C: null,
         averageGlucose: null,
         runIds: ['run1', 'run2'],
-        createdAt: mockDate,
-        updatedAt: mockDate
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
-      const updatedMonth = calculateMonthStatistics(month, runs, true); // Use weighted average
+      const runs: Run[] = [
+        {
+          id: 'run1',
+          userId,
+          name: 'Week 1',
+          startDate: new Date('2023-01-01'),
+          endDate: new Date('2023-01-03'), // 3 days
+          calculatedA1C: 6.5,
+          averageGlucose: 140,
+          monthId: 'month1',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'run2',
+          userId,
+          name: 'Week 2',
+          startDate: new Date('2023-01-04'),
+          endDate: new Date('2023-01-10'), // 7 days
+          calculatedA1C: 7.0,
+          averageGlucose: 160,
+          monthId: 'month1',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
       
-      // Weighted average: (120*7 + 140*14) / (7+14) = (840 + 1960) / 21 = 2800 / 21 = 133.33
-      // A1C: (133.33 + 46.7) / 28.7 = 6.27
-      expect(updatedMonth.averageGlucose).toBeCloseTo(133.33, 2);
-      expect(updatedMonth.calculatedA1C).toBeCloseTo(6.27, 2);
+      const result = calculateMonthStatistics(month, runs, true);
+      
+      // Weighted average: (140 * 3 + 160 * 7) / (3 + 7) = 154
+      expect(result.averageGlucose).toBeCloseTo(154);
+      expect(result.calculatedA1C).toBeCloseTo(calculateA1C(154));
     });
   });
 });

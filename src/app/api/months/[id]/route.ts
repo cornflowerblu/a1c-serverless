@@ -13,19 +13,34 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId: clerkId } = await auth();
     
-    if (!userId) {
+    if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const monthId = params.id;
     const supabase = createServerSupabaseClient();
+    
+    // First get the internal user ID from clerk_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    const userId = userData.id;
+    
+    const monthId = params.id;
     
     // Get month
     const { data, error } = await supabase
       .from('months')
-      .select('*, runs(*)')
+      .select('*, runs!runs_month_id_fkey(*)')
       .eq('id', monthId)
       .eq('user_id', userId)
       .single();
