@@ -1,31 +1,18 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignedIn, SignedOut, useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
 
 export default function HomePage() {
   const router = useRouter();
+  const { isSignedIn } = useAuth();
   
-  // Redirect authenticated users to dashboard
   useEffect(() => {
-    // This effect will only run on the client side
-    const redirectToDashboard = async () => {
-      try {
-        // Small delay to avoid immediate redirect which can cause flicker
-        await new Promise(resolve => setTimeout(resolve, 100));
-        router.replace('/dashboard');
-      } catch (error) {
-        console.error('Error redirecting to dashboard:', error);
-      }
-    };
-    
-    // Call the function when the component mounts if the user is signed in
-    // We can use a simple flag to check if we're in a browser environment
-    if (typeof window !== 'undefined') {
-      redirectToDashboard();
+    if (isSignedIn) {
+      router.push('/dashboard');
     }
-  }, [router]);
+  }, [isSignedIn, router]);
   
   return (
     <div className="min-h-screen flex flex-col">
