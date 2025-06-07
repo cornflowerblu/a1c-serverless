@@ -4,7 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerSupabaseClient } from '@/app/lib/client';
 import { validateGlucoseReading } from '@/utils/glucose-validation';
 import type { MealContext } from '@/types/glucose';
-import type { Json } from '@/types/supabase';
+// import type { Json } from '@/types/supabase';
 
 /**
  * GET /api/readings
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     // First get the user ID and role from clerk_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, role')
+      .select('id, user_role')
       .eq('clerk_id', clerkId)
       .single();
     
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     let userIds = [userData.id]; // Default to own user ID
     
     // If user is a caregiver, get connected users
-    if (userData.role === 'caregiver') {
+    if (userData.user_role === 'caregiver') {
       if (targetUserId) {
         // Check if caregiver has access to this specific user
         const { data: connectionData, error: connectionError } = await supabase
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
           .from('user_connections')
           .select('user_id')
           .eq('caregiver_id', userData.id)
-          .filter('permissions->can_view', 'eq', true);
+          .select();
           
         if (connectionsError) {
           console.error('Error fetching connections:', connectionsError);
@@ -81,7 +81,18 @@ export async function GET(request: NextRequest) {
     // Then get the glucose readings for all applicable user IDs
     const { data, error } = await supabase
       .from('glucose_readings')
-      .select('*, users!inner(name)')
+      .select(`
+        id,
+        user_id,
+        value,
+        timestamp,
+        meal_context,
+        notes,
+        run_id,
+        created_at,
+        updated_at,
+        users!inner(name, email)
+      `)      
       .in('user_id', userIds)
       .order('timestamp', { ascending: false });
     
@@ -91,18 +102,20 @@ export async function GET(request: NextRequest) {
     }
     
     // Transform from database format to API format
-    const readings = data.map(reading => ({
-      id: reading.id,
-      userId: reading.user_id,
-      userName: reading.users?.name || null,
-      value: reading.value,
-      timestamp: reading.timestamp,
-      mealContext: reading.meal_context as MealContext,
-      notes: reading.notes,
-      runId: reading.run_id,
-      createdAt: reading.created_at,
-      updatedAt: reading.updated_at
-    }));
+const readings = data.map(reading => ({
+  id: reading.id,
+  userId: reading.user_id,
+  userName: reading.users?.name || reading.users?.email,
+  value: reading.value,
+  timestamp: reading.timestamp,
+  mealContext: reading.meal_context as MealContext,
+  notes: reading.notes,
+  runId: reading.run_id,
+  createdAt: reading.created_at,
+  updatedAt: reading.updated_at
+}));
+
+
     
     return NextResponse.json({ readings });
   } catch (error) {

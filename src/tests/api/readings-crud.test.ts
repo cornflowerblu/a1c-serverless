@@ -145,7 +145,7 @@ describe('Glucose Readings API Endpoints', () => {
           {
             id: 'reading_1',
             userId: 'db_user_123',
-            userName: null,
+            userName: undefined,
             value: 120,
             timestamp: '2023-05-01T12:00:00Z',
             mealContext: 'FASTING',
@@ -157,7 +157,7 @@ describe('Glucose Readings API Endpoints', () => {
           {
             id: 'reading_2',
             userId: 'db_user_123',
-            userName: null,
+            userName: undefined,
             value: 140,
             timestamp: '2023-05-01T18:00:00Z',
             mealContext: 'AFTER_DINNER',
