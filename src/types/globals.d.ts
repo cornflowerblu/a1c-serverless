@@ -25,7 +25,7 @@ export interface AuthToken {
   /** Not valid before time (Unix timestamp) */
   nbf: number;
   /** User role */
-  role: string;
+  user_role: string;
   /** Session ID */
   sid: string;
   /** Subject (user identifier) */

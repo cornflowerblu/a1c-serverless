@@ -85,7 +85,7 @@ async function seedDatabase() {
         updated_at: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        role: 'user'
+        user_role: 'user'
       })
       .select()
       .single();
