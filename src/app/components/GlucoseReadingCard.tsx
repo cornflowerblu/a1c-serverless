@@ -55,7 +55,7 @@ export function GlucoseReadingCard({ reading }: GlucoseReadingCardProps) {
   const mealContext = formatMealContext(reading.mealContext);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-lg p-4 cursor-pointer transform transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:border-gray-300 hover:bg-gray-50/50">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transform transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-lg hover:border-gray-300 hover:bg-gray-50/50 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <span className="text-xl font-medium text-gray-900 transition-colors duration-200">
