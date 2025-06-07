@@ -121,4 +121,56 @@ describe('GlucoseReadingForm Component', () => {
     expect(screen.getByText(/fasting/i)).toBeInTheDocument();
     expect(screen.getByText(/other/i)).toBeInTheDocument();
   });
+  
+  it('should successfully submit the form with valid data', async () => {
+    const user = userEvent.setup();
+    
+    // Mock the form submission function
+    const mockSubmitFn = vi.fn().mockResolvedValue(undefined);
+    
+    render(<GlucoseReadingForm onSubmit={mockSubmitFn} />);
+    
+    // Get form elements
+    const valueInput = screen.getByTestId('glucose-value-input');
+    const dateInput = screen.getByTestId('timestamp-input');
+    const mealContextSelect = screen.getByTestId('meal-context-select');
+    const notesInput = screen.getByTestId('notes-input');
+    const submitButton = screen.getByTestId('submit-button');
+    
+    // Fill in valid data
+    await user.clear(valueInput);
+    await user.type(valueInput, '120');
+    
+    // Use a timestamp in the past to avoid future date validation issues
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 1); // Use yesterday to be safe
+    const pastDateString = pastDate.toISOString().slice(0, 16);
+    
+    await user.clear(dateInput);
+    await user.type(dateInput, pastDateString);
+    
+    // Select a meal context
+    await user.selectOptions(mealContextSelect, 'FASTING');
+    
+    // Add some notes
+    await user.clear(notesInput);
+    await user.type(notesInput, 'Test reading');
+    
+    // Submit the form
+    await user.click(submitButton);
+    
+    // Verify the form was submitted with correct data
+    await waitFor(() => {
+      expect(mockSubmitFn).toHaveBeenCalledTimes(1);
+    });
+    
+    // Check the submitted data
+    if (mockSubmitFn.mock.calls.length > 0) {
+      const submittedData = mockSubmitFn.mock.calls[0][0];
+      expect(submittedData.value).toBe(120);
+      expect(submittedData.mealContext).toBe('FASTING');
+      expect(submittedData.notes).toBe('Test reading');
+      expect(new Date(submittedData.timestamp)).toBeInstanceOf(Date);
+    }
+  });
 });
