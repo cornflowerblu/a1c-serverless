@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { RunDetailView } from '@/app/components/RunDetailView';
 
 interface Run {
   id: string;
@@ -78,8 +79,14 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
         throw new Error(errorData.error || 'Failed to recalculate run statistics');
       }
 
-      const data = await response.json();
-      setRun(data.run);
+      // After recalculation, fetch the full run details again to get updated stats and readings
+      const updatedResponse = await fetch(`/api/runs/${id}`);
+      if (!updatedResponse.ok) {
+        throw new Error('Failed to fetch updated run details');
+      }
+      
+      const updatedData = await updatedResponse.json();
+      setRun(updatedData.run);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -111,16 +118,6 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  // Format timestamp for display
-  const formatTimestamp = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
   if (loading) {
     return <div className="container mx-auto px-4 py-8">Loading run details...</div>;
   }
@@ -128,7 +125,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
           {error}
         </div>
         <Link href="/runs" className="text-blue-500 hover:text-blue-700">
@@ -141,7 +138,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   if (!run) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-4">
           Run not found
         </div>
         <Link href="/runs" className="text-blue-500 hover:text-blue-700">
@@ -153,106 +150,21 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{run.name}</h1>
-        <Link href="/runs" className="text-blue-500 hover:text-blue-700">
-          Back to Runs
-        </Link>
-      </div>
-
-      {/* Run details */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Run Details</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">Date Range:</span> {formatDate(run.startDate)} - {formatDate(run.endDate)}
-            </p>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">Created:</span> {formatTimestamp(run.createdAt)}
-            </p>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">Last Updated:</span> {formatTimestamp(run.updatedAt)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">A1C Estimate:</span>{' '}
-              {run.calculatedA1C ? run.calculatedA1C.toFixed(1) + '%' : 'Not calculated'}
-            </p>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">Average Glucose:</span>{' '}
-              {run.averageGlucose ? run.averageGlucose.toFixed(0) + ' mg/dL' : 'Not calculated'}
-            </p>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">Number of Readings:</span> {run.readings?.length || 0}
-            </p>
-          </div>
-        </div>
-        <div className="flex space-x-4">
-          <button
-            onClick={handleRecalculate}
-            disabled={recalculating}
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            {recalculating ? 'Recalculating...' : 'Recalculate Statistics'}
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            {deleting ? 'Deleting...' : 'Delete Run'}
-          </button>
-        </div>
-      </div>
-
-      {/* Readings list */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8">
-        <h2 className="text-xl font-semibold mb-4">Readings in this Run</h2>
-        {run.readings && run.readings.length === 0 ? (
-          <p>No readings in this run yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead>
-                <tr>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Value (mg/dL)
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Context
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Notes
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {run.readings?.map((reading) => (
-                  <tr key={reading.id}>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {formatTimestamp(reading.timestamp)}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {reading.value}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {reading.mealContext.replace(/_/g, ' ')}
-                    </td>
-                    <td className="py-2 px-4 border-b border-gray-200">
-                      {reading.notes || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <RunDetailView
+        id={run.id}
+        name={run.name}
+        startDate={run.startDate}
+        endDate={run.endDate}
+        calculatedA1C={run.calculatedA1C}
+        averageGlucose={run.averageGlucose}
+        readings={run.readings}
+        createdAt={run.createdAt}
+        updatedAt={run.updatedAt}
+        onRecalculate={handleRecalculate}
+        onDelete={handleDelete}
+        isRecalculating={recalculating}
+        isDeleting={deleting}
+      />
     </div>
   );
 }

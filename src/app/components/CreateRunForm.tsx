@@ -26,7 +26,7 @@ export function CreateRunForm({ onSubmit, isSubmitting }: CreateRunFormProps) {
 
   return (
     <Card className="mb-8 border-blue-200 shadow-md">
-      <Accordion type="single" collapsible className="w-full" defaultValue="create-run">
+      <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="create-run" className="border-0">
           <AccordionTrigger className="px-6 py-4 hover:no-underline bg-blue-50 text-blue-700 rounded-t-xl">
             <div className="flex items-center gap-2">
