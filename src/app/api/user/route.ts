@@ -2,6 +2,9 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerSupabaseClient } from '@/app/lib/client';
 import { NextResponse } from 'next/server';
 
+// Configure this route to use Edge Runtime
+export const runtime = 'edge';
+
 export async function GET() {
   const { userId } = await auth();
 
