@@ -64,7 +64,7 @@ export async function PUT(
       averageGlucose: monthData.average_glucose,
       createdAt: new Date(monthData.created_at as string),
       updatedAt: new Date(monthData.updated_at as string),
-      runIds: monthData.run_ids || []
+      runIds: [] // Initialize with empty array as run_ids doesn't exist in the database schema
     };
     
     // Get runs for this month
@@ -92,6 +92,9 @@ export async function PUT(
       createdAt: new Date(run.created_at as unknown as Date),
       updatedAt: new Date(run.updated_at as unknown as Date)
     }));
+    
+    // Populate the runIds array with the IDs from the fetched runs
+    month.runIds = runs.map(run => run.id);
     
     // Get calculation options from request body
     const body = await request.json();
@@ -126,7 +129,7 @@ export async function PUT(
       endDate: updatedData.end_date,
       calculatedA1C: updatedData.calculated_a1c,
       averageGlucose: updatedData.average_glucose,
-      runIds: updatedData.run_ids || [],
+      runIds: runs.map(run => run.id), // Use the run IDs we collected earlier
       createdAt: updatedData.created_at,
       updatedAt: updatedData.updated_at
     };
