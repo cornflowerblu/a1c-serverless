@@ -39,6 +39,8 @@
     "zod": "^3.25.56"
   },
   "devDependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
+    "@clerk/testing": "^1.8.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^15.0.0",
@@ -46,13 +48,14 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/supertest": "^6.0.3",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.2.1",
     "autoprefixer": "^10.4.21",
-    "cypress": "^13.6.4",
+    "cypress": "^13.17.0",
     "eslint": "^8.56.0",
     "eslint-config-next": "15.3.3",
     "eslint-config-prettier": "^9.1.0",
@@ -61,6 +64,7 @@
     "jsdom": "^24.0.0",
     "lint-staged": "^15.2.0",
     "prettier": "^3.2.5",
+    "supertest": "^7.1.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^1.2.1"

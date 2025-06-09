@@ -1,0 +1,8 @@
+{
+  "userId": "caretaker-user-id",
+  "firstName": "Care",
+  "lastName": "Taker",
+  "email": "caretaker@example.com",
+  "roles": ["caretaker", "user"],
+  "metadata": {}
+}

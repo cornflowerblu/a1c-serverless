@@ -1,0 +1,17 @@
+{
+  "user": {
+    "id": "test-user-id",
+    "firstName": "Test",
+    "lastName": "User",
+    "email": "test@example.com",
+    "roles": ["user"],
+    "isAuthenticated": true,
+    "lastActiveAt": "2023-06-09T12:00:00.000Z"
+  },
+  "session": {
+    "id": "test-session-id",
+    "status": "active",
+    "expireAt": "2023-06-10T12:00:00.000Z",
+    "lastActiveAt": "2023-06-09T12:00:00.000Z"
+  }
+}

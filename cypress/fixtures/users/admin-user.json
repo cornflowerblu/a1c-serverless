@@ -1,0 +1,8 @@
+{
+  "userId": "admin-user-id",
+  "firstName": "Admin",
+  "lastName": "User",
+  "email": "admin@example.com",
+  "roles": ["admin", "user"],
+  "metadata": {}
+}

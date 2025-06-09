@@ -1,21 +1,65 @@
-// ***********************************************
-// This example commands.js shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-namespace */
+import { getTestUser, setTestAuthHeader, visitAsAuthenticatedUser } from './auth-utils';
 
-// -- This is a parent command --
-// Cypress.Commands.add('login', (email, password) => { ... })
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      visitAsAuthenticatedUser(path: string): Chainable<void>;
+      mockClerkAuth(userType?: string): Chainable<void>;
+      mockApiAuth(): Chainable<void>;
+    }
+  }
+}
 
-// -- This is a child command --
-// Cypress.Commands.add('drag', { prevSubject: 'element'}, (subject, options) => { ... })
+// Visit a page as an authenticated user
+Cypress.Commands.add('visitAsAuthenticatedUser', (path: string) => {
+  return visitAsAuthenticatedUser(path);
+});
 
-// -- This is a dual command --
-// Cypress.Commands.add('dismiss', { prevSubject: 'optional'}, (subject, options) => { ... })
+// Mock Clerk authentication
+Cypress.Commands.add('mockClerkAuth', (userType = 'default') => {
+  // Load user data from fixture
+  return cy.fixture(`users/${userType}-user.json`).then(userData => {
+    // Intercept Clerk auth checks and return authenticated state
+    cy.intercept('GET', '**/api/auth/**', {
+      statusCode: 200,
+      body: {
+        isSignedIn: true,
+        user: {
+          id: userData.userId,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          emailAddresses: [{
+            emailAddress: userData.email,
+            id: 'email_' + Math.random().toString(36).substring(2),
+            verification: { status: 'verified' }
+          }],
+          publicMetadata: {
+            role: userData.roles?.[0] || 'user'
+          }
+        }
+      }
+    }).as('authCheck');
+    
+    // Intercept user session checks
+    cy.intercept('GET', '**/user', {
+      statusCode: 200,
+      body: {
+        id: userData.userId,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        role: userData.roles?.[0] || 'user'
+      }
+    }).as('userCheck');
+  });
+});
 
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+// Mock API authentication
+Cypress.Commands.add('mockApiAuth', () => {
+  // Intercept all API requests and add auth headers
+  cy.intercept('**', (req) => {
+    setTestAuthHeader(req);
+  });
+});

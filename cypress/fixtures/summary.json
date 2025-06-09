@@ -1,0 +1,30 @@
+{
+  "data": {
+    "current_a1c": 6.5,
+    "previous_a1c": 6.8,
+    "trend": "decreasing",
+    "last_calculated_at": "2023-06-01T00:00:00Z",
+    "readings_count": 120,
+    "average_glucose": 135,
+    "months": [
+      {
+        "id": "month-1",
+        "month": "2023-06",
+        "a1c_value": 6.5,
+        "readings_count": 45
+      },
+      {
+        "id": "month-2",
+        "month": "2023-05",
+        "a1c_value": 6.7,
+        "readings_count": 42
+      },
+      {
+        "id": "month-3",
+        "month": "2023-04",
+        "a1c_value": 6.8,
+        "readings_count": 33
+      }
+    ]
+  }
+}
