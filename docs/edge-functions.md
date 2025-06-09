@@ -16,9 +16,11 @@ Edge Functions are serverless functions that run at the edge of the network, clo
 We've implemented Edge Functions for the following API routes:
 
 1. **Authentication**
+
    - `/api/auth`: User authentication and session management
 
 2. **Core Functionality**
+
    - `/api/estimate`: Real-time A1C estimation based on glucose readings
    - `/api/summary`: Dashboard summary data with optimized performance
 
@@ -41,10 +43,12 @@ export const runtime = 'edge';
 ### Benefits in Our Application
 
 1. **Real-time A1C Estimation**
+
    - The `/api/estimate` endpoint provides real-time A1C estimates with minimal latency
    - Calculations are performed at the edge, reducing server load
 
 2. **Dashboard Performance**
+
    - The `/api/summary` endpoint aggregates data at the edge for faster dashboard loading
    - Users experience quicker access to their health metrics
 
