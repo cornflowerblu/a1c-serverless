@@ -49,7 +49,7 @@ export default function CalculateMonthPage({ params }: { params: { id: string } 
           setRunCount(runsData.runs?.length || 0);
           
           // Estimate reading count (this would be better with a dedicated API endpoint)
-          setReadingCount(runsData.runs?.reduce((total, run) => total + (run.readingCount || 5), 0) || 0);
+          setReadingCount(runsData.runs?.reduce((total: never, run: { readingCount: never; }) => total + (run.readingCount || 5), 0) || 0);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');

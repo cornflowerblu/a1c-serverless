@@ -182,4 +182,4 @@ export default function MonthForm({ initialData }: MonthFormProps) {
         </form>
       </CardContent>
     </Card>
-  );
+  )};
