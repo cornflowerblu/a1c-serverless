@@ -4,6 +4,9 @@ import { createServerSupabaseClient } from '@/app/lib/client';
 import { createRun } from '@/utils/run-management';
 import type { Run } from '@/types/glucose';
 
+// Configure this route to use Edge Runtime
+export const runtime = 'edge';
+
 /**
  * GET /api/runs
  * Retrieves all runs for the authenticated user

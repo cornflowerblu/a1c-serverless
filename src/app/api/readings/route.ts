@@ -4,7 +4,9 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerSupabaseClient } from '@/app/lib/client';
 import { validateGlucoseReading } from '@/utils/glucose-validation';
 import type { MealContext } from '@/types/glucose';
-// import type { Json } from '@/types/supabase';
+
+// Configure this route to use Edge Runtime
+export const runtime = 'edge';
 
 /**
  * GET /api/readings
@@ -102,20 +104,18 @@ export async function GET(request: NextRequest) {
     }
     
     // Transform from database format to API format
-const readings = data.map(reading => ({
-  id: reading.id,
-  userId: reading.user_id,
-  userName: reading.users?.name || reading.users?.email,
-  value: reading.value,
-  timestamp: reading.timestamp,
-  mealContext: reading.meal_context as MealContext,
-  notes: reading.notes,
-  runId: reading.run_id,
-  createdAt: reading.created_at,
-  updatedAt: reading.updated_at
-}));
-
-
+    const readings = data.map(reading => ({
+      id: reading.id,
+      userId: reading.user_id,
+      userName: reading.users?.name || reading.users?.email,
+      value: reading.value,
+      timestamp: reading.timestamp,
+      mealContext: reading.meal_context as MealContext,
+      notes: reading.notes,
+      runId: reading.run_id,
+      createdAt: reading.created_at,
+      updatedAt: reading.updated_at
+    }));
     
     return NextResponse.json({ readings });
   } catch (error) {
