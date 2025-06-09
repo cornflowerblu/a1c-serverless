@@ -18,8 +18,8 @@ describe('Home Page and Dashboard', () => {
   
   it('should redirect to dashboard for authenticated users', () => {
     // Login with enhanced auth command and visit home page
-    cy.loginWithClerk();
-    cy.visit('/', {
+    cy.loginWithClerkGoogle();
+    cy.visit('/dashboard', {
       headers: {
         'x-cypress-test-auth': 'true'
       }

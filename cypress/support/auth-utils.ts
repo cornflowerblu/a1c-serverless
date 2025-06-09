@@ -1,16 +1,8 @@
 // cypress/support/auth-utils.ts
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 
 /**
  * Authentication utilities for Cypress tests
  */
-
-/**
- * Check if we're running in a test environment
- */
-export const isTestEnvironment = (): boolean => {
-  return Cypress.env('isTestEnvironment') === true;
-};
 
 /**
  * Get test authentication configuration
@@ -29,14 +21,6 @@ export const getTestAuthConfig = () => {
 };
 
 /**
- * Check if test authentication is enabled
- */
-export const isTestAuthEnabled = (): boolean => {
-  const config = getTestAuthConfig();
-  return config.enabled === true;
-};
-
-/**
  * Get a test user configuration by type
  */
 export const getTestUser = (type = 'defaultUser') => {
@@ -48,39 +32,26 @@ export const getTestUser = (type = 'defaultUser') => {
  * Set test authentication header for requests
  */
 export const setTestAuthHeader = (req: { headers: { [x: string]: string; }; }) => {
-  if (isTestAuthEnabled()) {
-    req.headers = req.headers || {};
-    req.headers['x-cypress-test-auth'] = 'true';
-  }
+  req.headers = req.headers || {};
+  req.headers['x-cypress-test-auth'] = 'true';
+  req.headers['x-test-user-id'] = getTestUser().userId;
   return req;
 };
 
 /**
- * Load a user fixture by type
+ * Visit a page as an authenticated user
  */
-export const loadUserFixture = (userType = 'default') => {
-  const fixtureMap: Record<string, string> = {
-    default: 'users/default-user.json',
-    admin: 'users/admin-user.json',
-    caretaker: 'users/caretaker-user.json'
-  };
+export const visitAsAuthenticatedUser = (path: string) => {
+  // Intercept all API requests and add auth headers
+  cy.intercept('**', (req) => {
+    setTestAuthHeader(req);
+  });
   
-  const fixturePath = fixtureMap[userType] || fixtureMap.default;
-  return cy.fixture(fixturePath);
-};
-
-/**
- * Set up authentication with a specific user fixture
- */
-export const loginWithUserFixture = (userType = 'default') => {
-  return loadUserFixture(userType).then(userData => {
-    return cy.loginWithClerk({
-      userId: userData.id,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: userData.email,
-      roles: userData.roles,
-      metadata: userData.metadata
-    });
+  // Visit the page
+  return cy.visit(path, {
+    headers: {
+      'x-cypress-test-auth': 'true',
+      'x-test-user-id': getTestUser().userId
+    }
   });
 };
