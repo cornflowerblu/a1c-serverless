@@ -6,15 +6,16 @@ import { Webhook } from 'https://esm.sh/svix@1.15.0';
 // Function to map Clerk roles to your application roles
 function mapClerkRoleToUserRole(userData) {
   // Check for role in public_metadata or private_metadata
-  const clerkRole = userData.public_metadata?.role ||
-                   userData.private_metadata?.role ||
-                   userData.unsafe_metadata?.role;
+  const clerkRole =
+    userData.public_metadata?.role ||
+    userData.private_metadata?.role ||
+    userData.unsafe_metadata?.role;
 
   // If no role is provided, default to 'user'
   if (!clerkRole) return 'user';
 
   // Map Clerk roles to your UserRole enum values
-  switch(clerkRole.toLowerCase()) {
+  switch (clerkRole.toLowerCase()) {
     case 'admin':
     case 'administrator':
       return 'admin';
@@ -111,46 +112,41 @@ Deno.serve(async req => {
         );
       }
 
-      // Create user in Supabase
-      const { data, error } = await supabase
-    .from('users')
-    .insert({
-      clerk_id: clerkId,
-      email: primaryEmail,
-      name: `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim(),
-      user_role: mapClerkRoleToUserRole(payload.data),
-      "updatedAt": new Date()
-    })
-    .select()
+      const fullName = `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim();
+      const userRole = mapClerkRoleToUserRole(payload.data);
 
-      // Helper function to map Clerk roles to your application roles
-      function mapClerkRoleToUserRole(userData) {
-        // Check for role in public_metadata or private_metadata
-        const clerkRole =
-          userData.public_metadata?.role ||
-          userData.private_metadata?.role ||
-          userData.unsafe_metadata?.role;
+      // Create user in Supabase Auth
+      try {
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+          email: primaryEmail,
+          email_confirm: true,
+          user_metadata: {
+            clerk_id: clerkId,
+            full_name: fullName,
+            role: userRole,
+          },
+        });
 
-        // If no role is provided, default to 'user'
-        if (!clerkRole) return 'user';
-
-        // Map Clerk roles to your UserRole enum values
-        // Adjust this mapping based on your actual role names in Clerk
-        switch (clerkRole.toLowerCase()) {
-          case 'admin':
-          case 'administrator':
-            return 'admin';
-          case 'caregiver':
-          case 'care_giver':
-          case 'care-giver':
-            return 'caregiver';
-          case 'user':
-          case 'standard':
-          case 'default':
-          default:
-            return 'user';
+        if (authError) {
+          console.error('Error creating auth user:', authError);
+        } else {
+          console.log('Auth user created successfully:', authUser);
         }
+      } catch (authCreateError) {
+        console.error('Exception creating auth user:', authCreateError);
       }
+
+      // Create user in custom users table
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          clerk_id: clerkId,
+          email: primaryEmail,
+          name: fullName,
+          user_role: userRole,
+          updatedAt: new Date(),
+        })
+        .select();
 
       if (error) {
         console.error('Error creating user:', error);
@@ -172,12 +168,14 @@ Deno.serve(async req => {
 
       // Check if role has changed in metadata
       const updatedRole = mapClerkRoleToUserRole(payload.data);
+      const fullName = `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim();
 
+      // Update user in custom users table
       const { error } = await supabase
         .from('users')
         .update({
           email: primaryEmail,
-          name: `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim(),
+          name: fullName,
           // Only update role if it has changed in Clerk
           ...(updatedRole ? { user_role: updatedRole } : {}),
           updatedAt: new Date(),
@@ -192,6 +190,38 @@ Deno.serve(async req => {
         });
       }
 
+      // Update user in Supabase Auth
+      try {
+        // Find the auth user by email
+        const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
+
+        if (findError) {
+          console.error('Error finding auth user:', findError);
+        } else {
+          const user = authUsers.users.find(u => u.email === primaryEmail);
+
+          if (user) {
+            // Update the auth user
+            const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
+              email: primaryEmail,
+              user_metadata: {
+                clerk_id: clerkId,
+                full_name: fullName,
+                role: updatedRole,
+              },
+            });
+
+            if (updateError) {
+              console.error('Error updating auth user:', updateError);
+            } else {
+              console.log('Auth user updated successfully');
+            }
+          }
+        }
+      } catch (authUpdateError) {
+        console.error('Exception updating auth user:', authUpdateError);
+      }
+
       console.log('User updated successfully');
     }
 
@@ -199,18 +229,19 @@ Deno.serve(async req => {
     else if (eventType === 'user.deleted') {
       const clerkId = payload.data.id;
 
-      // Option 1: Hard delete the user
-      const { error } = await supabase.from('users').delete().eq('clerk_id', clerkId);
+      // Get user email before deletion
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('clerk_id', clerkId)
+        .single();
 
-      // Option 2: Soft delete (recommended for data integrity)
-      // const { error } = await supabase
-      //   .from('users')
-      //   .update({
-      //     "updatedAt": new Date(),
-      //     // If you've added the deleted_at column:
-      //     // deleted_at: new Date().toISOString()
-      //   })
-      //   .eq('clerk_id', clerkId)
+      if (fetchError) {
+        console.error('Error fetching user before deletion:', fetchError);
+      }
+
+      // Delete user from custom users table
+      const { error } = await supabase.from('users').delete().eq('clerk_id', clerkId);
 
       if (error) {
         console.error('Error deleting user:', error);
@@ -218,6 +249,33 @@ Deno.serve(async req => {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
+      }
+
+      // Delete user from Supabase Auth
+      if (userData?.email) {
+        try {
+          // Find the auth user by email
+          const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
+
+          if (findError) {
+            console.error('Error finding auth user for deletion:', findError);
+          } else {
+            const user = authUsers.users.find(u => u.email === userData.email);
+
+            if (user) {
+              // Delete the auth user
+              const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+
+              if (deleteError) {
+                console.error('Error deleting auth user:', deleteError);
+              } else {
+                console.log('Auth user deleted successfully');
+              }
+            }
+          }
+        } catch (authDeleteError) {
+          console.error('Exception deleting auth user:', authDeleteError);
+        }
       }
 
       console.log('User deleted successfully');
