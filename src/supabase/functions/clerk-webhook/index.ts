@@ -7,7 +7,7 @@ import { Webhook } from 'https://esm.sh/svix@1.15.0';
 const JOB_TYPES = {
   USER_CREATED: 'USER_CREATED',
   USER_UPDATED: 'USER_UPDATED',
-  USER_DELETED: 'USER_DELETED'
+  USER_DELETED: 'USER_DELETED',
 };
 
 // Function to map Clerk roles to your application roles
@@ -47,7 +47,7 @@ async function createJob(supabase, jobType, payload, priority = 1) {
         job_type: jobType,
         payload,
         status: 'PENDING',
-        priority
+        priority,
       })
       .select();
 
@@ -91,15 +91,35 @@ const verifyWebhookSignature = async (req: Request, webhookSecret: string) => {
 
 Deno.serve(async req => {
   // Get the webhook secret from environment variables
-  const webhookSecret = Deno.env.get('CLERK_WEBHOOK_SECRET') || '';
+  const webhookSecret =
+    Deno.env.get('CLERK_WEBHOOK_SECRET') || 'sk_test_kTGxXzq898ZPWUOEAb6Yvv2xdBfqANlckeHrm6pLUp';
+  const isProd = Deno.env.get('ENVIRONMENT') === 'production';
 
-  // Verify the webhook signature
-  const { verified, payload } = await verifyWebhookSignature(req, webhookSecret);
-  if (!verified) {
-    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  let payload;
+
+  if (isProd) {
+    // Only verify webhook signature in production
+    const verificationResult = await verifyWebhookSignature(req, webhookSecret);
+    if (!verificationResult.verified) {
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    payload = verificationResult.payload;
+  } else {
+    // In non-production environments, skip signature verification
+    try {
+      const rawBody = await req.text();
+      payload = JSON.parse(rawBody);
+      console.log('Development mode: Skipping webhook signature verification');
+    } catch (err) {
+      console.error('Error parsing webhook payload:', err);
+      return new Response(JSON.stringify({ error: 'Invalid payload format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   const eventType = payload.type;
@@ -119,12 +139,8 @@ Deno.serve(async req => {
         email => email.id === payload.data.primary_email_address_id
       )?.email_address;
 
-      // Check if user already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select()
-        .eq('clerk_id', clerkId)
-        .maybeSingle();
+      // Check if user already exists in auth system
+      const { data: authUsers, error: checkError } = await supabase.auth.admin.listUsers();
 
       if (checkError) {
         console.error('Error checking for existing user:', checkError);
@@ -133,6 +149,8 @@ Deno.serve(async req => {
           headers: { 'Content-Type': 'application/json' },
         });
       }
+
+      const existingUser = authUsers?.users?.find(u => u.user_metadata?.clerk_id === clerkId);
 
       if (existingUser) {
         console.log('User already exists:', existingUser);
@@ -148,7 +166,7 @@ Deno.serve(async req => {
       // Prepare job payload
       const fullName = `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim();
       const userRole = mapClerkRoleToUserRole(payload.data);
-      
+
       const jobPayload = {
         clerk_id: clerkId,
         email: primaryEmail,
@@ -156,7 +174,7 @@ Deno.serve(async req => {
         user_role: userRole,
         original_event: payload,
         created_at: new Date().toISOString(),
-        retry_count: 0
+        retry_count: 0,
       };
 
       // Create job in queue instead of directly processing
@@ -204,7 +222,7 @@ Deno.serve(async req => {
         user_role: updatedRole,
         original_event: payload,
         created_at: new Date().toISOString(),
-        retry_count: 0
+        retry_count: 0,
       };
 
       // Create job in queue instead of directly processing
@@ -237,15 +255,14 @@ Deno.serve(async req => {
       const clerkId = payload.data.id;
 
       // Get user email before queueing deletion
-      const { data: userData, error: fetchError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('clerk_id', clerkId)
-        .single();
+      const { data: authUsers, error: fetchError } = await supabase.auth.admin.listUsers();
 
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is 'not found'
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 is 'not found'
         console.error('Error fetching user before deletion:', fetchError);
       }
+
+      const userData = authUsers?.users?.find(u => u.user_metadata?.clerk_id === clerkId);
 
       // Prepare job payload
       const jobPayload = {
@@ -253,7 +270,7 @@ Deno.serve(async req => {
         email: userData?.email,
         original_event: payload,
         created_at: new Date().toISOString(),
-        retry_count: 0
+        retry_count: 0,
       };
 
       // Create job in queue instead of directly processing

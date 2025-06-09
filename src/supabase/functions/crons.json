@@ -4,6 +4,11 @@
         "name": "a1c-calculator",
         "schedule": "0 * * * *",
         "method": "GET"
+      },
+      {
+        "name": "user-job-processor",
+        "schedule": "* * * * *",
+        "method": "POST"
       }
     ]
   }

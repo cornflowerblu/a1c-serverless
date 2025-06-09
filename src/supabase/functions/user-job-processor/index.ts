@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const JOB_TYPES = {
   USER_CREATED: 'USER_CREATED',
   USER_UPDATED: 'USER_UPDATED',
-  USER_DELETED: 'USER_DELETED'
+  USER_DELETED: 'USER_DELETED',
 };
 
 // Function to map Clerk roles to your application roles
@@ -42,63 +42,39 @@ async function processUserCreationJob(supabase, job) {
   const { clerk_id, email, name, user_role, original_event } = job.payload;
 
   try {
-    // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select()
-      .eq('clerk_id', clerk_id)
-      .maybeSingle();
+    // Check if user already exists in auth system
+    const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
 
-    if (checkError) {
-      console.error('Error checking for existing user:', checkError);
-      return { success: false, error: checkError };
+    if (findError) {
+      console.error('Error finding existing users:', findError);
+      return { success: false, error: findError };
     }
 
+    const existingUser = authUsers.users.find(u => u.email === email);
+
     if (existingUser) {
-      console.log('User already exists:', existingUser);
+      console.log('User already exists in auth system:', existingUser.id);
       return { success: true, message: 'User already exists', user: existingUser };
     }
 
-    // Create user in Supabase Auth
-    try {
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: email,
-        email_confirm: true,
-        user_metadata: {
-          clerk_id: clerk_id,
-          full_name: name,
-          role: user_role,
-        },
-      });
-
-      if (authError) {
-        console.error('Error creating auth user:', authError);
-      } else {
-        console.log('Auth user created successfully:', authUser);
-      }
-    } catch (authCreateError) {
-      console.error('Exception creating auth user:', authCreateError);
-    }
-
-    // Create user in custom users table
-    const { data, error } = await supabase
-      .from('users')
-      .insert({
+    // Create user in Supabase Auth only
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: email,
+      email_confirm: true,
+      user_metadata: {
         clerk_id: clerk_id,
-        email: email,
-        name: name,
-        user_role: user_role,
-        updatedAt: new Date(),
-      })
-      .select();
+        full_name: name,
+        role: user_role,
+      },
+    });
 
-    if (error) {
-      console.error('Error creating user:', error);
-      return { success: false, error };
+    if (authError) {
+      console.error('Error creating auth user:', authError);
+      return { success: false, error: authError };
     }
 
-    console.log('User created successfully:', data);
-    return { success: true, data };
+    console.log('Auth user created successfully:', authUser);
+    return { success: true, data: authUser };
   } catch (err) {
     console.error('Error processing user creation job:', err);
     return { success: false, error: err };
@@ -110,56 +86,42 @@ async function processUserUpdateJob(supabase, job) {
   const { clerk_id, email, name, user_role, original_event } = job.payload;
 
   try {
-    // Update user in custom users table
-    const { error } = await supabase
-      .from('users')
-      .update({
+    // Update user in Supabase Auth only
+    // Find the auth user by email
+    const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
+
+    if (findError) {
+      console.error('Error finding auth user:', findError);
+      return { success: false, error: findError };
+    }
+
+    const user = authUsers.users.find(u => u.email === email);
+
+    if (!user) {
+      console.error('Auth user not found for update');
+      return { success: false, error: 'User not found' };
+    }
+
+    // Update the auth user
+    const { data: updatedUser, error: updateError } = await supabase.auth.admin.updateUserById(
+      user.id,
+      {
         email: email,
-        name: name,
-        user_role: user_role,
-        updatedAt: new Date(),
-      })
-      .eq('clerk_id', clerk_id);
-
-    if (error) {
-      console.error('Error updating user:', error);
-      return { success: false, error };
-    }
-
-    // Update user in Supabase Auth
-    try {
-      // Find the auth user by email
-      const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
-
-      if (findError) {
-        console.error('Error finding auth user:', findError);
-      } else {
-        const user = authUsers.users.find(u => u.email === email);
-
-        if (user) {
-          // Update the auth user
-          const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-            email: email,
-            user_metadata: {
-              clerk_id: clerk_id,
-              full_name: name,
-              role: user_role,
-            },
-          });
-
-          if (updateError) {
-            console.error('Error updating auth user:', updateError);
-          } else {
-            console.log('Auth user updated successfully');
-          }
-        }
+        user_metadata: {
+          clerk_id: clerk_id,
+          full_name: name,
+          role: user_role,
+        },
       }
-    } catch (authUpdateError) {
-      console.error('Exception updating auth user:', authUpdateError);
+    );
+
+    if (updateError) {
+      console.error('Error updating auth user:', updateError);
+      return { success: false, error: updateError };
     }
 
-    console.log('User updated successfully');
-    return { success: true };
+    console.log('Auth user updated successfully');
+    return { success: true, data: updatedUser };
   } catch (err) {
     console.error('Error processing user update job:', err);
     return { success: false, error: err };
@@ -171,43 +133,37 @@ async function processUserDeletionJob(supabase, job) {
   const { clerk_id, email } = job.payload;
 
   try {
-    // Delete user from custom users table
-    const { error } = await supabase.from('users').delete().eq('clerk_id', clerk_id);
-
-    if (error) {
-      console.error('Error deleting user:', error);
-      return { success: false, error };
-    }
-
-    // Delete user from Supabase Auth
+    // Delete user from Supabase Auth only
     if (email) {
-      try {
-        // Find the auth user by email
-        const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
+      // Find the auth user by email
+      const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
 
-        if (findError) {
-          console.error('Error finding auth user for deletion:', findError);
-        } else {
-          const user = authUsers.users.find(u => u.email === email);
-
-          if (user) {
-            // Delete the auth user
-            const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
-
-            if (deleteError) {
-              console.error('Error deleting auth user:', deleteError);
-            } else {
-              console.log('Auth user deleted successfully');
-            }
-          }
-        }
-      } catch (authDeleteError) {
-        console.error('Exception deleting auth user:', authDeleteError);
+      if (findError) {
+        console.error('Error finding auth user for deletion:', findError);
+        return { success: false, error: findError };
       }
-    }
 
-    console.log('User deleted successfully');
-    return { success: true };
+      const user = authUsers.users.find(u => u.email === email);
+
+      if (!user) {
+        console.log('User not found for deletion');
+        return { success: true, message: 'User not found' };
+      }
+
+      // Delete the auth user
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+
+      if (deleteError) {
+        console.error('Error deleting auth user:', deleteError);
+        return { success: false, error: deleteError };
+      }
+
+      console.log('Auth user deleted successfully');
+      return { success: true };
+    } else {
+      console.error('No email provided for user deletion');
+      return { success: false, error: 'No email provided for deletion' };
+    }
   } catch (err) {
     console.error('Error processing user deletion job:', err);
     return { success: false, error: err };
@@ -220,27 +176,22 @@ async function updateJobStatus(supabase, jobId, status, result = null) {
     const updateData = {
       status,
       processed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (result) {
       if (result.error) {
-        updateData.error = typeof result.error === 'string' 
-          ? result.error 
-          : JSON.stringify(result.error);
+        updateData.error =
+          typeof result.error === 'string' ? result.error : JSON.stringify(result.error);
       }
-      
+
       if (result.data) {
-        updateData.result = typeof result.data === 'string'
-          ? result.data
-          : JSON.stringify(result.data);
+        updateData.result =
+          typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
       }
     }
 
-    const { error } = await supabase
-      .from('job_queue')
-      .update(updateData)
-      .eq('id', jobId);
+    const { error } = await supabase.from('job_queue').update(updateData).eq('id', jobId);
 
     if (error) {
       console.error(`Error updating job ${jobId} status:`, error);
@@ -283,7 +234,7 @@ async function processNextJob(supabase) {
       .from('job_queue')
       .update({
         status: 'PROCESSING',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', job.id);
 
@@ -305,9 +256,9 @@ async function processNextJob(supabase) {
         result = await processUserDeletionJob(supabase, job);
         break;
       default:
-        result = { 
-          success: false, 
-          error: `Unknown job type: ${job.job_type}` 
+        result = {
+          success: false,
+          error: `Unknown job type: ${job.job_type}`,
         };
     }
 
@@ -319,7 +270,7 @@ async function processNextJob(supabase) {
       success: result.success,
       jobId: job.id,
       jobType: job.job_type,
-      result
+      result,
     };
   } catch (err) {
     console.error('Error processing job:', err);
@@ -328,7 +279,7 @@ async function processNextJob(supabase) {
 }
 
 // Main handler for the job processor
-Deno.serve(async (req) => {
+Deno.serve(async req => {
   // Initialize Supabase client
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -340,7 +291,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' },
-      status: result.success ? 200 : 500
+      status: result.success ? 200 : 500,
     });
   } catch (err) {
     console.error('Error in job processor:', err);
