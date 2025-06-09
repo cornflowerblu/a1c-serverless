@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { createServerSupabaseClient } from '../../lib/client';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import MonthSummary from '../../components/MonthSummary';
 
 export default async function MonthDetailPage({ params }: { params: { id: string } }) {
   const { userId: clerkId } = await auth();
@@ -105,12 +106,26 @@ export default async function MonthDetailPage({ params }: { params: { id: string
         </Card>
       </div>
       
+      {/* Month Summary Component */}
+      <div className="mb-8">
+        <MonthSummary 
+          month={{
+            id: month.id,
+            name: month.name,
+            startDate: month.start_date,
+            endDate: month.end_date,
+            calculatedA1C: month.calculated_a1c,
+            averageGlucose: month.average_glucose
+          }} 
+        />
+      </div>
+      
       <h2 className="text-xl font-bold mb-4">Runs in this Month</h2>
       
       {month.runs && month.runs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {month.runs.map((run) => (
-            <Card key={run.id} className="shadow-sm">
+            <Card key={run.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader>
                 <CardTitle>{run.name}</CardTitle>
                 <CardDescription>
@@ -121,11 +136,15 @@ export default async function MonthDetailPage({ params }: { params: { id: string
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="font-medium">A1C:</span>
-                    <span>{run.calculated_a1c ? `${run.calculated_a1c.toFixed(1)}%` : 'Not calculated'}</span>
+                    <span className={run.calculated_a1c ? (run.calculated_a1c > 7 ? 'text-red-600' : 'text-green-600') : ''}>
+                      {run.calculated_a1c ? `${run.calculated_a1c.toFixed(1)}%` : 'Not calculated'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Avg. Glucose:</span>
-                    <span>{run.average_glucose ? `${run.average_glucose.toFixed(0)} mg/dL` : 'Not calculated'}</span>
+                    <span className={run.average_glucose ? (run.average_glucose > 180 ? 'text-red-600' : 'text-green-600') : ''}>
+                      {run.average_glucose ? `${run.average_glucose.toFixed(0)} mg/dL` : 'Not calculated'}
+                    </span>
                   </div>
                 </div>
                 <div className="mt-4">

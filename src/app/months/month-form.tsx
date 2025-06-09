@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 
 // Define the form schema with Zod
 const monthSchema = z.object({
@@ -59,7 +59,7 @@ export default function MonthForm({ initialData }: MonthFormProps) {
     endDate: lastDayOfMonth.toISOString().split('T')[0]
   };
   
-  const { register, handleSubmit, formState: { errors } } = useForm<MonthFormData>({
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<MonthFormData>({
     resolver: zodResolver(monthSchema),
     defaultValues
   });
@@ -91,9 +91,28 @@ export default function MonthForm({ initialData }: MonthFormProps) {
     }
   };
   
+  // Watch form values for date preview
+  const startDateValue = watch('startDate');
+  const endDateValue = watch('endDate');
+  
+  // Calculate days in month for preview
+  const startDate = new Date(startDateValue);
+  const endDate = new Date(endDateValue);
+  const daysDiff = !isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) 
+    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 0;
+  
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardHeader>
+        <CardTitle>{initialData ? 'Edit Month' : 'Create Month'}</CardTitle>
+        <CardDescription>
+          {initialData 
+            ? 'Update the details for this month' 
+            : 'Create a new month to organize your glucose readings and runs'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-2">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -107,6 +126,7 @@ export default function MonthForm({ initialData }: MonthFormProps) {
               id="name"
               {...register('name')}
               placeholder="e.g. January 2023"
+              className={errors.name ? 'border-red-300' : ''}
             />
             {errors.name && (
               <p className="text-sm text-red-500">{errors.name.message}</p>
@@ -119,6 +139,7 @@ export default function MonthForm({ initialData }: MonthFormProps) {
               id="startDate"
               type="date"
               {...register('startDate')}
+              className={errors.startDate ? 'border-red-300' : ''}
             />
             {errors.startDate && (
               <p className="text-sm text-red-500">{errors.startDate.message}</p>
@@ -131,11 +152,19 @@ export default function MonthForm({ initialData }: MonthFormProps) {
               id="endDate"
               type="date"
               {...register('endDate')}
+              className={errors.endDate ? 'border-red-300' : ''}
             />
             {errors.endDate && (
               <p className="text-sm text-red-500">{errors.endDate.message}</p>
             )}
           </div>
+          
+          {/* Date range preview */}
+          {daysDiff > 0 && !errors.startDate && !errors.endDate && (
+            <div className="bg-blue-50 p-3 rounded text-sm">
+              <p>This month will span <strong>{daysDiff} days</strong> from {startDate.toLocaleDateString()} to {endDate.toLocaleDateString()}</p>
+            </div>
+          )}
           
           <div className="flex justify-end space-x-2">
             <Button
@@ -154,4 +183,3 @@ export default function MonthForm({ initialData }: MonthFormProps) {
       </CardContent>
     </Card>
   );
-}
