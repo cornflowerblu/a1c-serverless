@@ -62,12 +62,11 @@ export async function GET(request: NextRequest) {
     // Get the latest month data
     const { data: latestMonth, error: monthError } = await supabase
       .from('months')
-      .select('id, month, year, a1c_estimate, average_glucose')
+      .select('id, name, start_date, end_date, calculated_a1c, average_glucose')
       .eq('user_id', userId)
-      .order('year', { ascending: false })
-      .order('month', { ascending: false })
+      .order('start_date', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     
     if (monthError && monthError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
       console.error('Error fetching latest month:', monthError);
@@ -100,14 +99,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to count runs' }, { status: 500 });
     }
     
+    // Extract month and year from start_date if available
+    let month = null;
+    let year = null;
+    
+    if (latestMonth?.start_date) {
+      const startDate = new Date(latestMonth.start_date);
+      month = startDate.getMonth() + 1; // JavaScript months are 0-indexed
+      year = startDate.getFullYear();
+    }
+    
     // Construct the summary response
     const summary = {
       userId,
       latestMonth: latestMonth ? {
         id: latestMonth.id,
-        month: latestMonth.month,
-        year: latestMonth.year,
-        a1cEstimate: latestMonth.a1c_estimate,
+        name: latestMonth.name,
+        month,
+        year,
+        a1cEstimate: latestMonth.calculated_a1c,
         averageGlucose: latestMonth.average_glucose
       } : null,
       recentReadingsCount: recentReadingsCount || 0,

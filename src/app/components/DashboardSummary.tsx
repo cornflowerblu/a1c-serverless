@@ -8,6 +8,7 @@ interface SummaryData {
   userId: string;
   latestMonth: {
     id: string;
+    name: string;
     month: number;
     year: number;
     a1cEstimate: number;
@@ -109,9 +110,9 @@ export default function DashboardSummary({ userId }: { userId?: string }) {
               'No data available'}
           </div>
           <p className="text-xs text-muted-foreground">
-            {summary.latestMonth ? 
+            {summary.latestMonth && summary.latestMonth.month ? 
               `Based on ${getMonthName(summary.latestMonth.month)} ${summary.latestMonth.year}` : 
-              'Add glucose readings to see estimate'}
+              summary.latestMonth ? `Based on ${summary.latestMonth.name}` : 'Add glucose readings to see estimate'}
           </p>
         </CardContent>
       </Card>
@@ -127,9 +128,9 @@ export default function DashboardSummary({ userId }: { userId?: string }) {
               'No data'}
           </div>
           <p className="text-xs text-muted-foreground">
-            {summary.latestMonth ? 
+            {summary.latestMonth && summary.latestMonth.month ? 
               `Based on ${getMonthName(summary.latestMonth.month)} ${summary.latestMonth.year}` : 
-              'Add glucose readings to see average'}
+              summary.latestMonth ? `Based on ${summary.latestMonth.name}` : 'Add glucose readings to see average'}
           </p>
         </CardContent>
       </Card>
