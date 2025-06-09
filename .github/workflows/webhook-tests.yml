@@ -1,0 +1,153 @@
+name: Webhook Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/supabase/functions/clerk-webhook/**'
+      - 'src/supabase/functions/user-job-processor/**'
+      - 'src/tests/utils/webhook-*.ts'
+      - 'cypress/e2e/webhook-*.cy.ts'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/supabase/functions/clerk-webhook/**'
+      - 'src/supabase/functions/user-job-processor/**'
+      - 'src/tests/utils/webhook-*.ts'
+      - 'cypress/e2e/webhook-*.cy.ts'
+  workflow_dispatch:
+    # Allow manual triggering
+
+# Add permissions block to grant access to issues and pull requests
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  webhook-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      # Start PostgreSQL service for Supabase
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+    
+    - name: Set up Supabase CLI
+      run: |
+        npm install -g supabase
+        supabase --version
+    
+    - name: Start Supabase local development
+      run: |
+        supabase start
+        echo "Waiting for Supabase to be ready..."
+        sleep 10
+    
+    - name: Set up database schema for testing
+      run: |
+        # Create necessary tables for testing
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -p 54322 -c "
+          CREATE TABLE IF NOT EXISTS users (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            clerk_id TEXT UNIQUE NOT NULL,
+            email TEXT,
+            name TEXT,
+            user_role TEXT DEFAULT 'user',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+          );
+          
+          CREATE TABLE IF NOT EXISTS job_queue (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            job_type TEXT NOT NULL,
+            payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            priority INTEGER NOT NULL DEFAULT 1,
+            error TEXT,
+            result JSONB,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            processed_at TIMESTAMPTZ
+          );
+        "
+        
+        # Deploy SQL functions for job queue
+        PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -p 54322 -f src/supabase/functions/sql/job_queue_functions.sql
+    
+    - name: Deploy webhook functions
+      run: |
+        supabase functions deploy clerk-webhook --no-verify-jwt
+        supabase functions deploy user-job-processor --no-verify-jwt
+    
+    - name: Set up environment for tests
+      run: |
+        # Create a cypress.env.json file with test configuration
+        echo '{
+          "SUPABASE_URL": "http://localhost:54321",
+          "SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSJ9.vI9obAHOGyVVKa3pD--kJlyxp-Z2zV9UUMAhKpNLAcU",
+          "CLERK_WEBHOOK_SECRET": "test_webhook_secret"
+        }' > cypress.env.json
+        
+        # Set environment variables for Supabase functions
+        supabase secrets set CLERK_WEBHOOK_SECRET=test_webhook_secret
+    
+    - name: Run webhook tests
+      run: |
+        npx cypress run --spec "cypress/e2e/webhook-*.cy.ts"
+    
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: webhook-test-results
+        path: |
+          cypress/videos
+          cypress/screenshots
+    
+    - name: Add test status comment to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const outcome = process.env.TEST_OUTCOME || 'success';
+          const icon = outcome === 'success' ? '✅' : '❌';
+          
+          const output = `#### Webhook Integration Test Results ${icon}
+          
+          ${outcome === 'success' 
+            ? 'All webhook integration tests have passed successfully!' 
+            : 'Some webhook integration tests have failed. Please check the logs for details.'}
+          
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })
