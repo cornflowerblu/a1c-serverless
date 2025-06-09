@@ -92,7 +92,7 @@ const verifyWebhookSignature = async (req: Request, webhookSecret: string) => {
 Deno.serve(async req => {
   // Get the webhook secret from environment variables
   const webhookSecret =
-    Deno.env.get('CLERK_WEBHOOK_SECRET') || 'sk_test_kTGxXzq898ZPWUOEAb6Yvv2xdBfqANlckeHrm6pLUp';
+    Deno.env.get('CLERK_WEBHOOK_SECRET') || '';
   const isProd = Deno.env.get('ENVIRONMENT') === 'production';
 
   let payload;
