@@ -53,3 +53,4 @@ export function calculateAverageGlucose(
     return weightedSum / totalWeight;
   }
 }
+
