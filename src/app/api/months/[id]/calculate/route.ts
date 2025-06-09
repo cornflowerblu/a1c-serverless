@@ -5,6 +5,9 @@ import { createServerSupabaseClient } from '@/app/lib/client';
 import { calculateMonthStatistics } from '../../../../../utils/month-management';
 import type { Month, Run } from '../../../../../types/glucose';
 
+// Configure this route to use Edge Runtime
+export const runtime = 'edge';
+
 /**
  * PUT /api/months/:id/calculate
  * Calculates A1C and average glucose for a month and updates the record

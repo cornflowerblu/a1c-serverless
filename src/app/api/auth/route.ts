@@ -2,6 +2,9 @@ import { AuthToken } from '@/types/globals';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+// Configure this route to use Edge Runtime
+export const runtime = 'edge';
+
 export async function GET() {
   const { sessionClaims } = await auth();
 
