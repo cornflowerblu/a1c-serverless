@@ -89,7 +89,7 @@ a1c-serverless/
 ## Testing
 
 - **Unit/Integration Tests**: Using Vitest and React Testing Library
-- **E2E Tests**: Using Cypress
+- **E2E Tests**: Using Cypress with mock authentication
 
 Run tests with:
 
@@ -99,7 +99,34 @@ npm test
 
 # E2E tests
 npm run test:e2e
+
+# Open Cypress test runner
+npm run test:e2e:open
 ```
+
+### E2E Testing with Authentication
+
+The application uses a custom authentication system for Cypress tests that bypasses the actual Clerk authentication flow. This allows testing protected routes without real authentication.
+
+```typescript
+// Login with default test user
+cy.loginWithClerk();
+
+// Visit a protected route as an authenticated user
+cy.visitAsAuthenticatedUser('/dashboard');
+
+// Login with a specific user role
+cy.loginWithUserFixture('admin');
+cy.visitAsAuthenticatedUser('/dashboard');
+
+// Make authenticated API requests
+cy.authenticatedRequest({
+  method: 'GET',
+  url: '/api/readings'
+});
+```
+
+See [E2E Testing Documentation](docs/e2e-test.md) for more details.
 
 ## Deployment
 

@@ -1,0 +1,23 @@
+{
+  "data": {
+    "id": "month-1",
+    "user_id": "test-user-id",
+    "month": "2023-06",
+    "a1c_value": 6.5,
+    "calculated_at": "2023-06-30T23:59:59Z",
+    "created_at": "2023-06-01T00:00:00Z",
+    "updated_at": "2023-06-30T23:59:59Z",
+    "statistics": {
+      "readings_count": 45,
+      "average_glucose": 132,
+      "min_glucose": 95,
+      "max_glucose": 180,
+      "before_meal_average": 120,
+      "after_meal_average": 145,
+      "morning_average": 118,
+      "afternoon_average": 135,
+      "evening_average": 140,
+      "night_average": 125
+    }
+  }
+}
