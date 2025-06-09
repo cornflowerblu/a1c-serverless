@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { createClient } from './supabase/client';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/readings(.*)', '/runs(.*)', '/months(.*)'])
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/readings(.*)', '/runs(.*)', '/months(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
   // Check for test authentication header
@@ -12,9 +13,38 @@ export default clerkMiddleware(async (auth, req) => {
     if (isTestAuth && isTestEnvironment) {
       return;
     }
-    await auth.protect();
+    
+    // Protect the route with Clerk authentication
+    const session = await auth.protect();
+    
+    // If we have a valid session, check if the user exists in our profiles table
+    if (session && session.userId) {
+      try {
+        // Get the Supabase client
+        const supabase = createClient();
+        
+        // Check if the user has a profile
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.userId)
+          .single();
+        
+        // If there's no profile, create one with default role
+        if (error && error.code === 'PGRST116') { // PGRST116 is 'not found'
+          await supabase
+            .from('profiles')
+            .insert({
+              user_id: session.userId,
+              role: 'user'
+            });
+        }
+      } catch (error) {
+        console.error('Error checking/creating user profile:', error);
+      }
+    }
   }
-})
+});
 
 export const config = {
   matcher: [

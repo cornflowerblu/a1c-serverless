@@ -1,7 +1,7 @@
 
 [functions.clerk-webhook]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/clerk-webhook/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -12,7 +12,7 @@ entrypoint = "./functions/clerk-webhook/index.ts"
 
 [functions.a1c-calculator]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/a1c-calculator/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

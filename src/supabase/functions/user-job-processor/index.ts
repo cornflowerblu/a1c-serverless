@@ -4,9 +4,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Job types for user sync operations
 const JOB_TYPES = {
-  USER_CREATED: 'USER_CREATED',
-  USER_UPDATED: 'USER_UPDATED',
-  USER_DELETED: 'USER_DELETED',
+  USER_CREATED: 'user_created',
+  USER_UPDATED: 'user_updated',
+  USER_DELETED: 'user_deleted',
 };
 
 // Function to map Clerk roles to your application roles

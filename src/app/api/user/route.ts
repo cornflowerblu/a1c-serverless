@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { createServerSupabaseClient } from '@/app/lib/client';
+import { createClient } from '@/supabase/client';
 import { NextResponse } from 'next/server';
 
 // Configure this route to use Edge Runtime
@@ -13,20 +13,38 @@ export async function GET() {
   }
 
   try {
-    // Create a Supabase client with the Clerk session token
-    const supabaseClient = createServerSupabaseClient();
+    // Create a Supabase client
+    const supabase = createClient();
 
-    // Fetch users from Supabase
-    const { data: users, error } = await supabaseClient.from('users').select()
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return new NextResponse('Failed to fetch users', { status: 500 });
+    // Fetch user with profile from Supabase
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return new NextResponse('Failed to fetch user', { status: 500 });
     }
 
-    return NextResponse.json({ users });
+    // Fetch the user's profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .single();
+    
+    if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is 'not found'
+      console.error('Error fetching profile:', profileError);
+      return new NextResponse('Failed to fetch profile', { status: 500 });
+    }
+
+    // Combine user and profile data
+    const user = {
+      ...userData.user,
+      profile: profileData || undefined
+    };
+
+    return NextResponse.json({ user });
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('Error fetching user:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

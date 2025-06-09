@@ -3,12 +3,36 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Webhook } from 'https://esm.sh/svix@1.15.0';
 
-// Job types for user sync operations
-const JOB_TYPES = {
-  USER_CREATED: 'USER_CREATED',
-  USER_UPDATED: 'USER_UPDATED',
-  USER_DELETED: 'USER_DELETED',
-};
+// Function to create a job in the job_queue table
+async function createJob(supabase, jobType, payload, priority = 1) {
+  try {
+    const { data, error } = await supabase.from("job_queue").insert({
+      job_type: jobType,
+      payload,
+      status: "PENDING",
+      priority,
+    }).select();
+
+    if (error) {
+      console.error(`Error creating ${jobType} job:`, error);
+      return {
+        success: false,
+        error,
+      };
+    }
+    console.log(`${jobType} job created successfully:`, data[0].id);
+    return {
+      success: true,
+      jobId: data[0].id,
+    };
+  } catch (err) {
+    console.error(`Exception creating ${jobType} job:`, err);
+    return {
+      success: false,
+      error: err,
+    };
+  }
+}
 
 // Function to map Clerk roles to your application roles
 function mapClerkRoleToUserRole(userData) {
@@ -35,32 +59,6 @@ function mapClerkRoleToUserRole(userData) {
     case 'default':
     default:
       return 'user';
-  }
-}
-
-// Function to create a job in the job queue
-async function createJob(supabase, jobType, payload, priority = 1) {
-  try {
-    const { data, error } = await supabase
-      .from('job_queue')
-      .insert({
-        job_type: jobType,
-        payload,
-        status: 'PENDING',
-        priority,
-      })
-      .select();
-
-    if (error) {
-      console.error(`Error creating ${jobType} job:`, error);
-      return { success: false, error };
-    }
-
-    console.log(`${jobType} job created successfully:`, data[0].id);
-    return { success: true, jobId: data[0].id };
-  } catch (err) {
-    console.error(`Exception creating ${jobType} job:`, err);
-    return { success: false, error: err };
   }
 }
 
@@ -91,36 +89,17 @@ const verifyWebhookSignature = async (req: Request, webhookSecret: string) => {
 
 Deno.serve(async req => {
   // Get the webhook secret from environment variables
-  const webhookSecret =
-    Deno.env.get('CLERK_WEBHOOK_SECRET') || '';
-  const isProd = Deno.env.get('ENVIRONMENT') === 'production';
+  const webhookSecret = Deno.env.get('CLERK_WEBHOOK_SECRET') || '';
 
-  let payload;
-
-  if (isProd) {
-    // Only verify webhook signature in production
-    const verificationResult = await verifyWebhookSignature(req, webhookSecret);
-    if (!verificationResult.verified) {
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    payload = verificationResult.payload;
-  } else {
-    // In non-production environments, skip signature verification
-    try {
-      const rawBody = await req.text();
-      payload = JSON.parse(rawBody);
-      console.log('Development mode: Skipping webhook signature verification');
-    } catch (err) {
-      console.error('Error parsing webhook payload:', err);
-      return new Response(JSON.stringify({ error: 'Invalid payload format' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  // Always verify webhook signature
+  const verificationResult = await verifyWebhookSignature(req, webhookSecret);
+  if (!verificationResult.verified) {
+    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
+  const payload = verificationResult.payload;
 
   const eventType = payload.type;
 
@@ -163,41 +142,61 @@ Deno.serve(async req => {
         );
       }
 
-      // Prepare job payload
-      const fullName = `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim();
+      // Prepare user data
+      const firstName = payload.data.first_name || '';
+      const lastName = payload.data.last_name || '';
+      const fullName = `${firstName} ${lastName}`.trim();
       const userRole = mapClerkRoleToUserRole(payload.data);
 
-      const jobPayload = {
-        clerk_id: clerkId,
+      // Create user in auth.users via admin API
+      const { data: authUser, error: createError } = await supabase.auth.admin.createUser({
         email: primaryEmail,
-        name: fullName,
-        user_role: userRole,
-        original_event: payload,
-        created_at: new Date().toISOString(),
-        retry_count: 0,
-      };
+        email_confirm: true,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+          name: fullName,
+          clerk_id: clerkId
+        }
+      });
 
-      // Create job in queue instead of directly processing
-      const { success, jobId, error } = await createJob(
-        supabase,
-        JOB_TYPES.USER_CREATED,
-        jobPayload,
-        2 // Higher priority for user creation
-      );
-
-      if (!success) {
-        console.error('Failed to create user creation job:', error);
-        return new Response(JSON.stringify({ error: 'Failed to queue user creation' }), {
+      if (createError) {
+        console.error('Error creating user in auth.users:', createError);
+        return new Response(JSON.stringify({ error: 'Failed to create user' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      console.log('User creation job queued successfully:', jobId);
+      // The trigger should create the profile automatically, but we update the role here
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: userRole })
+        .eq('user_id', authUser.user.id);
+
+      if (profileError) {
+        console.error('Error updating user profile:', profileError);
+        // Don't fail the request, just log the error
+      }
+
+      // Add job to the queue for further processing if needed
+      const jobResult = await createJob(supabase, 'user_created', {
+        user_id: authUser.user.id,
+        clerk_id: clerkId,
+        email: primaryEmail,
+        role: userRole
+      });
+      
+      if (!jobResult.success) {
+        console.error('Error creating user_created job:', jobResult.error);
+        // Don't fail the request, just log the error
+      }
+
+      console.log('User created successfully:', authUser);
       return new Response(
-        JSON.stringify({ success: true, message: 'User creation job queued', jobId }),
+        JSON.stringify({ success: true, user: authUser }),
         {
-          status: 202, // Accepted
+          status: 201,
           headers: { 'Content-Type': 'application/json' },
         }
       );
@@ -210,41 +209,84 @@ Deno.serve(async req => {
         email => email.id === payload.data.primary_email_address_id
       )?.email_address;
 
-      // Check if role has changed in metadata
-      const updatedRole = mapClerkRoleToUserRole(payload.data);
-      const fullName = `${payload.data.first_name || ''} ${payload.data.last_name || ''}`.trim();
-
-      // Prepare job payload
-      const jobPayload = {
-        clerk_id: clerkId,
-        email: primaryEmail,
-        name: fullName,
-        user_role: updatedRole,
-        original_event: payload,
-        created_at: new Date().toISOString(),
-        retry_count: 0,
-      };
-
-      // Create job in queue instead of directly processing
-      const { success, jobId, error } = await createJob(
-        supabase,
-        JOB_TYPES.USER_UPDATED,
-        jobPayload
-      );
-
-      if (!success) {
-        console.error('Failed to create user update job:', error);
-        return new Response(JSON.stringify({ error: 'Failed to queue user update' }), {
+      // Find the user by clerk_id in user_metadata
+      const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
+      
+      if (findError) {
+        console.error('Error finding user:', findError);
+        return new Response(JSON.stringify({ error: 'Failed to find user' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      console.log('User update job queued successfully:', jobId);
-      return new Response(
-        JSON.stringify({ success: true, message: 'User update job queued', jobId }),
+      const existingUser = authUsers?.users?.find(u => u.user_metadata?.clerk_id === clerkId);
+      
+      if (!existingUser) {
+        console.error('User not found for update:', clerkId);
+        return new Response(JSON.stringify({ error: 'User not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Prepare user data
+      const firstName = payload.data.first_name || '';
+      const lastName = payload.data.last_name || '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      const userRole = mapClerkRoleToUserRole(payload.data);
+
+      // Update user metadata
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        existingUser.id,
         {
-          status: 202, // Accepted
+          email: primaryEmail,
+          user_metadata: {
+            ...existingUser.user_metadata,
+            first_name: firstName,
+            last_name: lastName,
+            name: fullName,
+          }
+        }
+      );
+
+      if (updateError) {
+        console.error('Error updating user:', updateError);
+        return new Response(JSON.stringify({ error: 'Failed to update user' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Update the user's profile with the role
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: userRole })
+        .eq('user_id', existingUser.id);
+
+      if (profileError) {
+        console.error('Error updating user profile:', profileError);
+        // Don't fail the request, just log the error
+      }
+
+      // Add job to the queue for further processing if needed
+      const jobResult = await createJob(supabase, 'user_updated', {
+        user_id: existingUser.id,
+        clerk_id: clerkId,
+        email: primaryEmail,
+        role: userRole
+      });
+      
+      if (!jobResult.success) {
+        console.error('Error creating user_updated job:', jobResult.error);
+        // Don't fail the request, just log the error
+      }
+
+      console.log('User updated successfully:', existingUser.id);
+      return new Response(
+        JSON.stringify({ success: true, userId: existingUser.id }),
+        {
+          status: 200,
           headers: { 'Content-Type': 'application/json' },
         }
       );
@@ -254,45 +296,55 @@ Deno.serve(async req => {
     else if (eventType === 'user.deleted') {
       const clerkId = payload.data.id;
 
-      // Get user email before queueing deletion
-      const { data: authUsers, error: fetchError } = await supabase.auth.admin.listUsers();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        // PGRST116 is 'not found'
-        console.error('Error fetching user before deletion:', fetchError);
-      }
-
-      const userData = authUsers?.users?.find(u => u.user_metadata?.clerk_id === clerkId);
-
-      // Prepare job payload
-      const jobPayload = {
-        clerk_id: clerkId,
-        email: userData?.email,
-        original_event: payload,
-        created_at: new Date().toISOString(),
-        retry_count: 0,
-      };
-
-      // Create job in queue instead of directly processing
-      const { success, jobId, error } = await createJob(
-        supabase,
-        JOB_TYPES.USER_DELETED,
-        jobPayload
-      );
-
-      if (!success) {
-        console.error('Failed to create user deletion job:', error);
-        return new Response(JSON.stringify({ error: 'Failed to queue user deletion' }), {
+      // Find the user by clerk_id in user_metadata
+      const { data: authUsers, error: findError } = await supabase.auth.admin.listUsers();
+      
+      if (findError) {
+        console.error('Error finding user:', findError);
+        return new Response(JSON.stringify({ error: 'Failed to find user' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      console.log('User deletion job queued successfully:', jobId);
+      const existingUser = authUsers?.users?.find(u => u.user_metadata?.clerk_id === clerkId);
+      
+      if (!existingUser) {
+        console.error('User not found for deletion:', clerkId);
+        return new Response(JSON.stringify({ error: 'User not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Add job to the queue before deletion for any cleanup tasks
+      const jobResult = await createJob(supabase, 'user_deleted', {
+        user_id: existingUser.id,
+        clerk_id: clerkId,
+        email: existingUser.email
+      });
+      
+      if (!jobResult.success) {
+        console.error('Error creating user_deleted job:', jobResult.error);
+        // Don't fail the request, just log the error
+      }
+
+      // Delete the user
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(existingUser.id);
+
+      if (deleteError) {
+        console.error('Error deleting user:', deleteError);
+        return new Response(JSON.stringify({ error: 'Failed to delete user' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('User deleted successfully:', existingUser.id);
       return new Response(
-        JSON.stringify({ success: true, message: 'User deletion job queued', jobId }),
+        JSON.stringify({ success: true, userId: existingUser.id }),
         {
-          status: 202, // Accepted
+          status: 200,
           headers: { 'Content-Type': 'application/json' },
         }
       );
